@@ -35,6 +35,7 @@ def get_stitched_image(image_id):
     final_img = Image.new("RGB", (w, h))
     cols, rows = math.ceil(w / tw), math.ceil(h / th)
     
+    # Status placeholder for the top of the page
     my_bar = st.progress(0, text=f"Downloading tiles for {image_id}...")
     
     for r in range(rows):
@@ -56,7 +57,6 @@ def get_stitched_image(image_id):
 # --- CACHED AI LOGIC ---
 @st.cache_data(show_spinner=False)
 def get_ai_analysis(img_bytes, _model_instance):
-    """Sends image to Gemini and returns the transcription/translation."""
     prompt = """
     Analyze this 1800s Italian civil record. 
     1. Identify the record type, primary names, and dates.
@@ -104,20 +104,29 @@ if image_id:
         # 1. Automatic Download & Stitch
         img_data = get_stitched_image(image_id)
 
-        # 2. Display Image First
+        # 2. UI Action Bar (Buttons at the top)
+        btn_col1, btn_col2 = st.columns([1, 4])
+        with btn_col1:
+            st.download_button("📥 Download JPG", img_data, f"{image_id}.jpg", "image/jpeg")
+        
+        # 3. AI Status Message (Above image)
+        status_area = st.empty()
+        status_area.info(f"⏳ AI is transcribing and translating with {CHOSEN_MODEL}. Results will appear below the image...")
+
+        # 4. Display Image (Middle)
         st.image(img_data, use_container_width=True)
 
-        # 3. Automatic Download Button
-        st.download_button("📥 Download JPG", img_data, f"{image_id}.jpg", "image/jpeg")
-
-        # 4. Automatic AI Analysis (runs right after image displays)
-        with st.spinner(f"AI is transcribing and translating with {CHOSEN_MODEL}..."):
-            analysis_text = get_ai_analysis(img_data, model)
-            
-            st.markdown("---")
-            st.subheader("📝 AI Findings")
-            st.write(analysis_text)
-            st.markdown("---")
+        # 5. Automatic AI Analysis (Calculated but results displayed at bottom)
+        analysis_text = get_ai_analysis(img_data, model)
+        
+        # 6. Final Results (Bottom)
+        st.markdown("---")
+        st.subheader("📝 AI Findings")
+        st.write(analysis_text)
+        st.markdown("---")
+        
+        # Clear the "Processing" status once done
+        status_area.success(f"✅ Analysis complete using {CHOSEN_MODEL}.")
 
     except Exception as e:
         st.error(f"Error processing {image_id}: {e}")
