@@ -63,7 +63,6 @@ def get_ai_analysis(img_bytes, _model_instance):
     2. Provide a full transcription of handwritten details.
     3. Translate the summary into clear English.
     """
-    # Note: Using Gemini's multimodal capabilities to pass bytes directly
     response = _model_instance.generate_content([
         prompt, 
         {"mime_type": "image/jpeg", "data": img_bytes}
@@ -84,14 +83,12 @@ with st.sidebar:
 # --- UI START ---
 st.title("🏛️ Antenati AI Downloader & Translator")
 
+# Using <br> for tight line spacing in the instructions
 st.markdown(f"""
-💡 **How to use:** Paste a full Antenati URL or Image ID below. The app will automatically download, stitch, and analyze the record.
-*(Shortcut: You can also pass parameters in the browser URL using `?image_id=...` or `?url=...`)*
-""")
-st.markdown(f"""
-Example URL - https://antenati.cultura.gov.it/ark:/12657/an_ua264421/LzPr8VJ  
-Example Image ID - LzPr8VJ
-""")
+💡 **How to use:** Paste a full Antenati URL or Image ID below. <br>
+**Example URL:** https://antenati.cultura.gov.it/ark:/12657/an_ua264421/LzPr8VJ <br>
+**Example Image ID:** LzPr8VJ
+""", unsafe_allow_html=True)
 
 # --- URL PARAMETER LOGIC ---
 params = st.query_params
