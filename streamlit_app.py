@@ -12,12 +12,6 @@ CACHE_TTL = 900  # 15 minutes
 
 st.set_page_config(page_title="Antenati AI", page_icon="🧬", layout="wide")
 
-# Initialize a counter in session state if it doesn't exist
-if "cache_count" not in st.session_state:
-    st.session_state.cache_count = 0
-if "tracked_ids" not in st.session_state:
-    st.session_state.tracked_ids = set()
-
 # Setup Gemini
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
@@ -69,6 +63,7 @@ def get_ai_analysis(img_bytes, _model_instance):
     2. Provide a full transcription of handwritten details.
     3. Translate the summary into clear English.
     """
+    # Note: Using Gemini's multimodal capabilities to pass bytes directly
     response = _model_instance.generate_content([
         prompt, 
         {"mime_type": "image/jpeg", "data": img_bytes}
@@ -81,12 +76,8 @@ with st.sidebar:
     st.write(f"**Model:** {CHOSEN_MODEL}")
     st.write(f"**Cache TTL:** 15 Minutes")
     
-    # We display the count from our session tracker
-    st.metric("Images Processed", len(st.session_state.tracked_ids))
-    
     if st.button("🗑️ Clear App Cache"):
         st.cache_data.clear()
-        st.session_state.tracked_ids.clear() # Reset our tracker too
         st.success("Cache cleared!")
         st.rerun()
 
@@ -118,26 +109,31 @@ def get_image_id(user_input):
 image_id = get_image_id(input_clean)
 
 if image_id:
-    # Track the ID so it shows up in the sidebar metric
-    st.session_state.tracked_ids.add(image_id)
-    
     try:
+        # 1. Automatic Download & Stitch (Cached)
         img_data = get_stitched_image(image_id)
+
+        # 2. Top-level Download Button
         st.download_button("📥 Download JPG", img_data, f"{image_id}.jpg", "image/jpeg")
         
+        # 3. AI Status Placeholder
         status_area = st.empty()
         status_area.info(f"⏳ AI is transcribing and translating with {CHOSEN_MODEL}. Results will appear below the image...")
 
+        # 4. Display the High-Res Image
         st.image(img_data, use_container_width=True)
 
+        # 5. Automatic AI Analysis (Cached)
         analysis_text = get_ai_analysis(img_data, model)
         
+        # 6. Final Results & Anchor
         st.markdown('<div id="findings"></div>', unsafe_allow_html=True)
         st.markdown("---")
         st.subheader("📝 AI Findings")
         st.write(analysis_text)
         st.markdown("---")
         
+        # 7. Success with Jump Link
         status_area.success(f"✅ Analysis complete using {CHOSEN_MODEL}. [Click here to see AI Findings](#findings)")
 
     except Exception as e:
