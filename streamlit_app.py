@@ -6,27 +6,27 @@ from io import BytesIO
 from PIL import Image
 import google.generativeai as genai
 
-# 1. Page Config (Set to Wide for better viewing)
+# --- CONFIGURATION (Change model name here only) ---
+CHOSEN_MODEL = 'gemini-1.5-flash' 
+
 st.set_page_config(page_title="Antenati AI", page_icon="🧬", layout="wide")
 
-# 2. Setup Gemini (Using 1.5 Flash for reliable free quota)
+# Setup Gemini
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    model = genai.GenerativeModel(CHOSEN_MODEL)
 else:
     st.error("🔑 API Key missing! Add GEMINI_API_KEY to your Streamlit Secrets.")
 
 st.title("🏛️ Antenati AI Downloader & Translator")
-st.markdown("💡 **How to use:** Paste a full Antenati URL or just the Image ID (for example, *LzPr8VJ*) below to stitch and analyze the record.")
+st.markdown(f"💡 **How to use:** Paste a full Antenati URL or Image ID below. Then, use the AI button (powered by **{CHOSEN_MODEL}**) to transcribe and translate the record.")
 
-# 3. Input with logic to handle URLs or IDs
+# Input with logic to handle URLs or IDs
 raw_input = st.text_input("Paste Antenati URL or Image ID here:")
 input_clean = raw_input.strip()
 
-# Function to extract ID from URL if necessary
 def get_image_id(user_input):
     if "antenati.cultura.gov.it" in user_input:
-        # Regex to find the last part of the URL after the last slash
         match = re.search(r'([^/]+)$', user_input)
         return match.group(1) if match else user_input
     return user_input
@@ -57,31 +57,29 @@ if image_id:
                 tile_data = Image.open(BytesIO(res.content))
                 final_img.paste(tile_data, (x, y))
 
-        # --- PREPARE DATA ---
         buf = BytesIO()
         final_img.save(buf, format="JPEG", quality=95)
         img_data = buf.getvalue()
 
         # --- UI LAYOUT ---
-        # Action Buttons
         btn_col1, btn_col2 = st.columns([1, 4])
         with btn_col1:
             st.download_button("📥 Download JPG", img_data, f"{image_id}.jpg", "image/jpeg")
         
-        # AI Trigger (Full Width below buttons)
-        if st.button("🤖 AI Analyze & Translate"):
-            with st.spinner("Gemini is reading the cursive..."):
+        # Action button mentioning the model dynamically
+        if st.button(f"🤖 Analyze & Translate with {CHOSEN_MODEL}"):
+            with st.spinner(f"Reading cursive with {CHOSEN_MODEL}..."):
                 prompt = """
                 Analyze this 1800s Italian civil record. 
-                1. Transcribe key names, dates, and locations.
-                2. Translate the summary into English.
-                3. Format the result in a clear, full-width table or list.
+                1. Identify the record type, primary names, and dates.
+                2. Provide a full transcription of handwritten details.
+                3. Translate the summary into clear English.
                 """
                 response = model.generate_content([prompt, {"mime_type": "image/jpeg", "data": img_data}])
                 
-                # THIS IS THE FIX: Displaying the AI output outside of any columns
+                # Full Width Findings
                 st.markdown("---")
-                st.subheader("📝 AI Findings (Full Width)")
+                st.subheader("📝 Findings")
                 st.write(response.text)
                 st.markdown("---")
 
