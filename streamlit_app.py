@@ -73,33 +73,18 @@ def get_ai_analysis(img_bytes, _model_instance):
 st.title("🏛️ Antenati AI Downloader & Translator")
 
 # --- SIDEBAR: CACHE MANAGEMENT ---
-def get_cache_size_mb():
-    # This accesses the internal storage of the 'get_stitched_image' function
-    # and sums up the length of the byte objects stored there.
-    try:
-        # Get the internal data for our specific cached function
-        # Note: This uses an internal Streamlit attribute which may change in future versions
-        cache_stats = get_stitched_image.get_stats()
-        # We'll calculate based on the total bytes of cached values
-        total_bytes = sum(len(entry.value) for entry in get_stitched_image._cache_info.values() if hasattr(entry, 'value'))
-        return total_bytes / (1024 * 1024)
-    except:
-        return 0.0
-
 with st.sidebar:
     st.header("⚙️ App Management")
     st.write(f"**Model:** {CHOSEN_MODEL}")
     st.write(f"**Cache TTL:** 15 Minutes")
     
-    # Calculate and show size
-    # Note: This is an approximation of the raw image data size
+    # Simple count of unique Image IDs in the download cache
     try:
-        # A simpler way to count items if the byte calculation is restricted
-        item_count = len(get_stitched_image.check_in_cache(image_id) if image_id else [])
-        # For a robust display, we'll just show the number of records for now
-        # as calculating exact RAM usage of serialized objects is complex in Streamlit
-        st.write(f"**Cached Records:** {len(st.runtime.caching.cache_data_api._get_cache_info())}")
+        # We access the internal length of the function's cache
+        cache_count = len(get_stitched_image.get_stats())
+        st.metric("Images in Cache", cache_count)
     except:
+        # Fallback if stats are being recalibrated
         st.write("**Cache Status:** Active")
 
     if st.button("🗑️ Clear App Cache"):
