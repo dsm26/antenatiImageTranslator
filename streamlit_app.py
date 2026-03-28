@@ -89,7 +89,7 @@ st.markdown(f"""
 *(Shortcut: You can also pass parameters in the browser URL using `?image_id=...` or `?url=...`)*
 """)
 st.markdown(f"""
-Example URL - https://antenati.cultura.gov.it/ark:/12657/an_ua264421/LzPr8VJ
+Example URL - https://antenati.cultura.gov.it/ark:/12657/an_ua264421/LzPr8VJ  
 Example Image ID - LzPr8VJ
 """)
 
