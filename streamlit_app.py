@@ -8,6 +8,7 @@ import google.generativeai as genai
 
 # --- CONFIGURATION ---
 CHOSEN_MODEL = 'gemini-2.5-flash' 
+CACHE_TTL = 900  # 15 minutes in seconds
 
 st.set_page_config(page_title="Antenati AI", page_icon="🧬", layout="wide")
 
@@ -19,7 +20,7 @@ else:
     st.error("🔑 API Key missing! Add GEMINI_API_KEY to your Streamlit Secrets.")
 
 # --- CACHED DOWNLOAD LOGIC ---
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=CACHE_TTL)
 def get_stitched_image(image_id):
     HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": "https://antenati.cultura.gov.it/"}
     base_url = f"https://iiif-antenati.cultura.gov.it/iiif/2/{image_id}"
@@ -54,7 +55,7 @@ def get_stitched_image(image_id):
     return buf.getvalue()
 
 # --- CACHED AI LOGIC ---
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=CACHE_TTL)
 def get_ai_analysis(img_bytes, _model_instance):
     prompt = """
     Analyze this 1800s Italian civil record. 
@@ -71,8 +72,19 @@ def get_ai_analysis(img_bytes, _model_instance):
 # --- UI START ---
 st.title("🏛️ Antenati AI Downloader & Translator")
 
+# --- SIDEBAR: CACHE MANAGEMENT ---
+with st.sidebar:
+    st.header("⚙️ App Management")
+    st.write(f"**Model:** {CHOSEN_MODEL}")
+    st.write(f"**Cache TTL:** 15 Minutes")
+    
+    if st.button("🗑️ Clear App Cache"):
+        st.cache_data.clear()
+        st.success("Cache cleared!")
+        st.rerun()
+
 st.markdown(f"""
-💡 **How to use:** Paste a full Antenati URL or Image ID below. The app will automatically download, stitch, and analyze the record using **{CHOSEN_MODEL}**.
+💡 **How to use:** Paste a full Antenati URL or Image ID below. The app will automatically download, stitch, and analyze the record.
 *(Shortcut: You can also pass parameters in the browser URL using `?image_id=...` or `?url=...`)*
 """)
 
@@ -101,28 +113,26 @@ if image_id:
         # 1. Automatic Download & Stitch
         img_data = get_stitched_image(image_id)
 
-        # 2. UI Action Bar (Buttons at the top)
+        # 2. UI Action Bar
         st.download_button("📥 Download JPG", img_data, f"{image_id}.jpg", "image/jpeg")
         
-        # 3. AI Status Message (Above image)
+        # 3. AI Status Message
         status_area = st.empty()
         status_area.info(f"⏳ AI is transcribing and translating with {CHOSEN_MODEL}. Results will appear below the image...")
 
-        # 4. Display Image (Middle)
+        # 4. Display Image
         st.image(img_data, use_container_width=True)
 
         # 5. Automatic AI Analysis
         analysis_text = get_ai_analysis(img_data, model)
         
-        # 6. Final Results (Bottom)
-        # We add a hidden HTML anchor here so the browser knows where to jump
+        # 6. Final Results
         st.markdown('<div id="findings"></div>', unsafe_allow_html=True)
         st.markdown("---")
         st.subheader("📝 AI Findings")
         st.write(analysis_text)
         st.markdown("---")
         
-        # 7. Final Success Message with Jump Link
         status_area.success(f"✅ Analysis complete using {CHOSEN_MODEL}. [Click here to see AI Findings](#findings)")
 
     except Exception as e:
