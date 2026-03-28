@@ -25,6 +25,8 @@ st.markdown(f"""
 💡 **How to use:** Paste a full Antenati URL or Image ID below. Then, use the AI button (powered by **{CHOSEN_MODEL}**) to transcribe and translate the record.
 *(Shortcut: You can also pass parameters in the browser URL using `?image_id=...` or `?url=...`)*
 """)
+st.markdown(f"Example URL - https://antenati.cultura.gov.it/ark:/12657/an_ua264421/LzPr8VJ")
+st.markdown(f"Example Image ID - LzPr8VJ)
 
 # --- URL PARAMETER LOGIC ---
 params = st.query_params
