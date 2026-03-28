@@ -8,9 +8,15 @@ import google.generativeai as genai
 
 # --- CONFIGURATION ---
 CHOSEN_MODEL = 'gemini-2.5-flash' 
-CACHE_TTL = 900  # 15 minutes in seconds
+CACHE_TTL = 900  # 15 minutes
 
 st.set_page_config(page_title="Antenati AI", page_icon="🧬", layout="wide")
+
+# Initialize a counter in session state if it doesn't exist
+if "cache_count" not in st.session_state:
+    st.session_state.cache_count = 0
+if "tracked_ids" not in st.session_state:
+    st.session_state.tracked_ids = set()
 
 # Setup Gemini
 if "GEMINI_API_KEY" in st.secrets:
@@ -69,28 +75,23 @@ def get_ai_analysis(img_bytes, _model_instance):
     ])
     return response.text
 
-# --- UI START ---
-st.title("🏛️ Antenati AI Downloader & Translator")
-
 # --- SIDEBAR: CACHE MANAGEMENT ---
 with st.sidebar:
     st.header("⚙️ App Management")
     st.write(f"**Model:** {CHOSEN_MODEL}")
     st.write(f"**Cache TTL:** 15 Minutes")
     
-    # Simple count of unique Image IDs in the download cache
-    try:
-        # We access the internal length of the function's cache
-        cache_count = len(get_stitched_image.get_stats())
-        st.metric("Images in Cache", cache_count)
-    except:
-        # Fallback if stats are being recalibrated
-        st.write("**Cache Status:** Active")
-
+    # We display the count from our session tracker
+    st.metric("Images Processed", len(st.session_state.tracked_ids))
+    
     if st.button("🗑️ Clear App Cache"):
         st.cache_data.clear()
+        st.session_state.tracked_ids.clear() # Reset our tracker too
         st.success("Cache cleared!")
         st.rerun()
+
+# --- UI START ---
+st.title("🏛️ Antenati AI Downloader & Translator")
 
 st.markdown(f"""
 💡 **How to use:** Paste a full Antenati URL or Image ID below. The app will automatically download, stitch, and analyze the record.
@@ -100,7 +101,6 @@ st.markdown(f"""
 # --- URL PARAMETER LOGIC ---
 params = st.query_params
 default_value = ""
-
 if "url" in params:
     default_value = params["url"]
 elif "image_id" in params:
@@ -118,24 +118,20 @@ def get_image_id(user_input):
 image_id = get_image_id(input_clean)
 
 if image_id:
+    # Track the ID so it shows up in the sidebar metric
+    st.session_state.tracked_ids.add(image_id)
+    
     try:
-        # 1. Automatic Download & Stitch
         img_data = get_stitched_image(image_id)
-
-        # 2. UI Action Bar
         st.download_button("📥 Download JPG", img_data, f"{image_id}.jpg", "image/jpeg")
         
-        # 3. AI Status Message
         status_area = st.empty()
         status_area.info(f"⏳ AI is transcribing and translating with {CHOSEN_MODEL}. Results will appear below the image...")
 
-        # 4. Display Image
         st.image(img_data, use_container_width=True)
 
-        # 5. Automatic AI Analysis
         analysis_text = get_ai_analysis(img_data, model)
         
-        # 6. Final Results
         st.markdown('<div id="findings"></div>', unsafe_allow_html=True)
         st.markdown("---")
         st.subheader("📝 AI Findings")
