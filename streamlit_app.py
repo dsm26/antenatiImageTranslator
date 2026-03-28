@@ -65,7 +65,7 @@ def get_stitched_image(image_id):
     
     w, h = info["width"], info["height"]
     
-    # Corrected extraction logic for tile dimensions (Fixed SyntaxError)
+    # Corrected extraction logic for tile dimensions
     first_tile = info["tiles"][0]
     tw = first_tile["width"]
     th = first_tile.get("height", tw)
@@ -109,32 +109,37 @@ def get_ai_analysis(img_bytes, metadata_context, _model_instance):
     response = _model_instance.generate_content([prompt, {"mime_type": "image/jpeg", "data": img_bytes}])
     return response.text
 
-# --- CSV HELPER ---
-def format_csv_row(ai_text, image_id, source_input):
+# --- CSV & TABLE HELPERS ---
+def extract_raw_data(ai_text):
     try:
-        source_url = source_input if "http" in source_input else f"https://antenati.cultura.gov.it/ark:/12657/an_ua/{image_id}"
         match = re.search(r'RAW_DATA:\s*(\{.*?\})', ai_text, re.DOTALL)
         if match:
-            data = json.loads(match.group(1))
-            row = [
-                image_id, 
-                data.get("type",""), 
-                data.get("subject",""), 
-                data.get("date",""), 
-                data.get("father",""), 
-                data.get("mother",""), 
-                data.get("town",""), 
-                data.get("notes","").replace("\n", " "),
-                source_url
-            ]
-            return ",".join([f'"{str(x)}"' for x in row])
+            return json.loads(match.group(1))
     except:
         return None
+    return None
+
+def format_csv_row(data, image_id, source_input):
+    if not data: return None
+    source_url = source_input if "http" in source_input else f"https://antenati.cultura.gov.it/ark:/12657/an_ua/{image_id}"
+    row = [
+        image_id, 
+        data.get("type",""), 
+        data.get("subject",""), 
+        data.get("date",""), 
+        data.get("father",""), 
+        data.get("mother",""), 
+        data.get("town",""), 
+        data.get("notes","").replace("\n", " "),
+        source_url
+    ]
+    return ",".join([f'"{str(x)}"' for x in row])
 
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("⚙️ App Management")
     st.write(f"**Model:** {CHOSEN_MODEL}")
+    st.write(f"**Cache TTL:** {CACHE_TTL//60}m") # Restored TTL
     if st.button("🗑️ Clear Cache & History"):
         st.cache_data.clear()
         st.session_state.history = []
@@ -211,19 +216,29 @@ if "GEMINI_API_KEY" in st.secrets:
 
             analysis_text = get_ai_analysis(img_data, record_meta, model)
             display_text = analysis_text.split("RAW_DATA:")[0].strip()
+            raw_data = extract_raw_data(analysis_text)
             
             st.markdown('<div id="findings"></div>', unsafe_allow_html=True)
             st.markdown("---")
             st.subheader("📝 AI Findings")
             st.write(display_text)
             
-            csv_row = format_csv_row(analysis_text, input_id, raw_input)
-            if csv_row:
+            if raw_data:
                 st.markdown("---")
-                st.subheader("📊 Research Log Entry (CSV)")
-                st.markdown("""**Recommended Headers:** `ID`, `Type`, `Subject`, `Date`, `Father`, `Mother`, `Town`, `Notes`, `Source URL`""")
+                st.subheader("📊 Research Log Data")
+                
+                # --- NEW HUMAN READABLE TABLE ---
+                st.table({
+                    "Field": ["ID", "Record Type", "Subject", "Date", "Father", "Mother", "Town", "Notes"],
+                    "Value": [input_id, raw_data.get("type"), raw_data.get("subject"), raw_data.get("date"), 
+                              raw_data.get("father"), raw_data.get("mother"), raw_data.get("town"), raw_data.get("notes")]
+                })
+                
+                # --- CSV CODE BLOCK ---
+                csv_row = format_csv_row(raw_data, input_id, raw_input)
+                st.markdown("**CSV Copy-Paste Row:**")
                 st.code(csv_row, language="csv")
-                st.caption("☝️ Copy the row above for your log.")
+                st.caption("☝️ Use the copy button in the top right to paste this row into your master log.")
             
             status_area.success(f"✅ Analysis complete. [View Findings](#findings)")
 
