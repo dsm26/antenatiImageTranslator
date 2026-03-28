@@ -20,13 +20,21 @@ else:
 
 st.title("🏛️ Antenati AI Downloader & Translator")
 st.markdown(f"💡 **How to use:** Paste a full Antenati URL or Image ID below. Then, use the AI button (powered by **{CHOSEN_MODEL}**) to transcribe and translate the record.")
-st.markdown(f"Example URL: https://antenati.cultura.gov.it/ark:/12657/an_ua264421/LzPr8VJ")
-st.markdown(f"Example Image ID: LzPr8VJ")
 
-# 1. Input with logic to handle URLs or IDs
-raw_input = st.text_input("Paste Antenati URL or Image ID here:")
+# --- URL PARAMETER LOGIC ---
+# Check for ?image_id=... or ?url=... in the browser address bar
+params = st.query_params
+default_value = ""
 
-# 2. Trim whitespace AND remove trailing slashes
+if "url" in params:
+    default_value = params["url"]
+elif "image_id" in params:
+    default_value = params["image_id"]
+
+# Input with logic to handle URLs or IDs (pre-filled if params exist)
+raw_input = st.text_input("Paste Antenati URL or Image ID here:", value=default_value)
+
+# Trim whitespace AND remove trailing slashes
 input_clean = raw_input.strip().rstrip('/')
 
 def get_image_id(user_input):
@@ -45,13 +53,20 @@ if image_id:
     
     try:
         # --- DOWNLOAD LOGIC ---
-        info = requests.get(f"{base_url}/info.json", headers=HEADERS).json()
+        info_resp = requests.get(f"{base_url}/info.json", headers=HEADERS)
+        info_resp.raise_for_status()
+        info = info_resp.json()
+        
         w, h = info["width"], info["height"]
         tw = info["tiles"][0]["width"]
         th = info["tiles"][0].get("height", tw)
         
         final_img = Image.new("RGB", (w, h))
         cols, rows = math.ceil(w / tw), math.ceil(h / th)
+        
+        # Progress bar for better feedback
+        progress_text = "Downloading tiles..."
+        my_bar = st.progress(0, text=progress_text)
         
         for r in range(rows):
             for c in range(cols):
@@ -61,6 +76,7 @@ if image_id:
                 res = requests.get(tile_url, headers=HEADERS)
                 tile_data = Image.open(BytesIO(res.content))
                 final_img.paste(tile_data, (x, y))
+            my_bar.progress((r + 1) / rows, text=f"Stitching row {r+1} of {rows}...")
 
         buf = BytesIO()
         final_img.save(buf, format="JPEG", quality=95)
@@ -71,7 +87,6 @@ if image_id:
         with btn_col1:
             st.download_button("📥 Download JPG", img_data, f"{image_id}.jpg", "image/jpeg")
         
-        # Action button mentioning the model dynamically
         if st.button(f"🤖 Analyze & Translate with {CHOSEN_MODEL}"):
             with st.spinner(f"Reading cursive with {CHOSEN_MODEL}..."):
                 prompt = """
@@ -82,13 +97,11 @@ if image_id:
                 """
                 response = model.generate_content([prompt, {"mime_type": "image/jpeg", "data": img_data}])
                 
-                # Full Width Findings
                 st.markdown("---")
                 st.subheader("📝 Findings")
                 st.write(response.text)
                 st.markdown("---")
 
-        # Full Width Image Preview
         st.image(img_data, use_container_width=True)
 
     except Exception as e:
