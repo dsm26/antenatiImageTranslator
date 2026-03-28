@@ -10,7 +10,18 @@ import google.generativeai as genai
 CHOSEN_MODEL = 'gemini-2.5-flash' 
 CACHE_TTL = 900  # 15 minutes
 
-st.set_page_config(page_title="Antenati AI", page_icon="🧬", layout="wide")
+# Updated browser tab title
+st.set_page_config(page_title="Antenati Downloader & AI Translator", page_icon="🧬", layout="wide")
+
+# --- HIDE STREAMLIT BRANDING (CSS) ---
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # Setup Gemini
 if "GEMINI_API_KEY" in st.secrets:
@@ -81,9 +92,9 @@ with st.sidebar:
         st.rerun()
 
 # --- UI START ---
-st.title("🏛️ Antenati AI Downloader & Translator")
+# Updated main page title
+st.title("🏛️ Antenati Downloader & AI Translator")
 
-# Using <br> for tight line spacing in the instructions
 st.markdown(f"""
 💡 **How to use:** Paste a full Antenati URL or Image ID below. <br>
 **Example URL:** https://antenati.cultura.gov.it/ark:/12657/an_ua264421/LzPr8VJ <br>
@@ -111,30 +122,22 @@ image_id = get_image_id(input_clean)
 
 if image_id:
     try:
-        # 1. Automatic Download & Stitch (Cached)
         img_data = get_stitched_image(image_id)
-
-        # 2. Top-level Download Button
         st.download_button("📥 Download JPG", img_data, f"{image_id}.jpg", "image/jpeg")
         
-        # 3. AI Status Placeholder
         status_area = st.empty()
         status_area.info(f"⏳ AI is transcribing and translating with {CHOSEN_MODEL}. Results will appear below the image...")
 
-        # 4. Display the High-Res Image
         st.image(img_data, use_container_width=True)
 
-        # 5. Automatic AI Analysis (Cached)
         analysis_text = get_ai_analysis(img_data, model)
         
-        # 6. Final Results & Anchor
         st.markdown('<div id="findings"></div>', unsafe_allow_html=True)
         st.markdown("---")
         st.subheader("📝 AI Findings")
         st.write(analysis_text)
         st.markdown("---")
         
-        # 7. Success with Jump Link
         status_area.success(f"✅ Analysis complete using {CHOSEN_MODEL}. [Click here to see AI Findings](#findings)")
 
     except Exception as e:
