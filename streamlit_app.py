@@ -9,24 +9,43 @@ import google.generativeai as genai
 # --- CONFIGURATION ---
 CHOSEN_MODEL = 'gemini-2.5-flash' 
 CACHE_TTL = 900 
-HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36", "Referer": "https://antenati.cultura.gov.it/"}
+# Broadened headers to appear more like a standard browser session
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Referer": "https://antenati.cultura.gov.it/",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+}
 
 st.set_page_config(page_title="Antenati Downloader & AI Translator", page_icon="🧬", layout="wide")
 
 if "history" not in st.session_state:
     st.session_state.history = []
 
-# --- METADATA FETCHING ---
+# --- IMPROVED METADATA FETCHING ---
 @st.cache_data(show_spinner=False, ttl=CACHE_TTL)
 def get_antenati_metadata(image_id):
+    """Tries multiple endpoints to get the archival context."""
+    # Attempt 1: The IIIF Manifest (Most detailed)
     try:
         manifest_url = f"https://antenati.cultura.gov.it/iiif/2/{image_id}/manifest"
-        resp = requests.get(manifest_url, headers=HEADERS, timeout=10)
+        resp = requests.get(manifest_url, headers=HEADERS, timeout=7)
         if resp.status_code == 200:
             data = resp.json()
             return data.get("label", "Italian Civil Record")
     except:
         pass
+
+    # Attempt 2: Fallback to the Info.json (Least restrictive)
+    try:
+        info_url = f"https://iiif-antenati.cultura.gov.it/iiif/2/{image_id}/info.json"
+        resp = requests.get(info_url, headers=HEADERS, timeout=5)
+        if resp.status_code == 200:
+            # Info.json doesn't have names, but we can verify it exists
+            return "Italian Civil Record (Image Verified)"
+    except:
+        pass
+        
     return "Italian Civil Record (Context unavailable)"
 
 # --- CACHED DOWNLOAD LOGIC ---
@@ -123,27 +142,24 @@ if "GEMINI_API_KEY" in st.secrets:
             record_meta = get_antenati_metadata(input_id)
             img_data = get_stitched_image(input_id)
             
-            # Action Bar
             st.download_button("📥 Download JPG", img_data, f"{input_id}.jpg", "image/jpeg")
             
-            # Status Area (The "Green Box" logic)
             status_area = st.empty()
             status_area.info(f"⏳ AI is analyzing with {CHOSEN_MODEL}. Results will appear below...")
 
             st.image(img_data, use_container_width=True)
+            
+            # Metadata Display Box
             st.info(f"**Archival Context:** {record_meta}")
 
-            # AI Analysis
             analysis_text = get_ai_analysis(img_data, record_meta, model)
             
-            # Final Results Display
             st.markdown('<div id="findings"></div>', unsafe_allow_html=True)
             st.markdown("---")
             st.subheader("📝 AI Findings")
             st.write(analysis_text)
             st.markdown("---")
             
-            # Restore the Green Success Box
             status_area.success(f"✅ Analysis complete. [Click here to jump to AI Findings](#findings)")
 
         except Exception as e:
