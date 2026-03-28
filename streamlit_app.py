@@ -26,7 +26,7 @@ st.markdown(f"""
 *(Shortcut: You can also pass parameters in the browser URL using `?image_id=...` or `?url=...`)*
 """)
 st.markdown(f"Example URL - https://antenati.cultura.gov.it/ark:/12657/an_ua264421/LzPr8VJ")
-st.markdown(f"Example Image ID - LzPr8VJ)
+st.markdown(f"Example Image ID - LzPr8VJ")
 
 # --- URL PARAMETER LOGIC ---
 params = st.query_params
