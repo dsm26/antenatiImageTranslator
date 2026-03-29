@@ -1,5 +1,10 @@
 from streamlit.testing.v1 import AppTest
 import pytest
+import streamlit as st
+
+# Mock the secrets so the app doesn't crash during testing
+st.secrets["GEMINI_API_KEY"] = "mock_key_for_testing"
+
 
 def test_app_initialization():
     """Ensure the app starts and shows the title and help text."""
