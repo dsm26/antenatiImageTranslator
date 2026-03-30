@@ -1,5 +1,4 @@
 name: Streamlit App Tests
-
 on: [push, pull_request]
 
 jobs:
@@ -18,11 +17,11 @@ jobs:
         run: |
           pip install streamlit pytest pillow requests google-generativeai
 
-      # --- NEW STEP TO FIX THE SECRETS ERROR ---
       - name: Create dummy secrets
         run: |
           mkdir -p .streamlit
-          echo 'GEMINI_API_KEY = "dummy_key_for_testing"' > .streamlit/secrets.toml
+          echo 'GEMINI_API_KEY = "dummy_key"' > .streamlit/secrets.toml
 
       - name: Run Tests
-        run: pytest test_app.py
+        # Adding --tb=short makes the error logs easier to read if it fails
+        run: pytest test_app.py --tb=short
