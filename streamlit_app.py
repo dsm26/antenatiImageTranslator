@@ -153,6 +153,10 @@ def get_git_info():
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("⚙️ App Management")
+    
+    # Optional API Key Input
+    user_api_key = st.text_input("🔑 Personal Gemini API Key (Optional)", type="password", help="If provided, this key will be used instead of the app default.")
+    
     st.write(f"**Default model:** {CHOSEN_MODEL}")
     st.write(f"**Cache TTL:** {CACHE_TTL//60}m")
     if st.button("🗑️ Clear Cache & History"):
@@ -197,8 +201,11 @@ st.markdown(f"""
 **Example ID:** LzPr8VJ
 """, unsafe_allow_html=True)
 
-if "GEMINI_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+# Determine which API key to use (Personal > Secret)
+final_api_key = user_api_key if user_api_key else st.secrets.get("GEMINI_API_KEY")
+
+if final_api_key:
+    genai.configure(api_key=final_api_key)
     
     params = st.query_params
     url_param = params.get("url", "")
@@ -255,6 +262,8 @@ if "GEMINI_API_KEY" in st.secrets:
                 translate_clicked = st.button("Translate with AI", type="primary", use_container_width=True)
 
             if translate_clicked:
+                # Ensure the configuration is set to the current chosen key before creating the model
+                genai.configure(api_key=final_api_key)
                 current_model = genai.GenerativeModel(selected_model_name)
                 status_area.info(f"⏳ AI is analyzing record: {input_id}. Results will appear **below the image** once completed...")
                 
@@ -300,4 +309,4 @@ if "GEMINI_API_KEY" in st.secrets:
         except Exception as e:
             st.error(f"Error fetching record: {e}")
 else:
-    st.error("🔑 API Key missing in Secrets.")
+    st.error("🔑 API Key missing. Please enter your own Gemini API Key in the sidebar or ensure the app administrator has configured secrets.")
