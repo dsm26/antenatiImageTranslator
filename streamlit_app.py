@@ -6,6 +6,9 @@ import json
 from io import BytesIO
 from PIL import Image
 import google.generativeai as genai
+import subprocess
+from datetime import datetime
+
 
 # --- CONFIGURATION ---
 CHOSEN_MODEL = 'gemini-3.1-flash-lite-preview' 
@@ -135,6 +138,18 @@ def format_csv_row(data, image_id, source_input):
     ]
     return ",".join([f'"{str(x)}"' for x in row])
 
+# --- GIT METADATA HELPER ---
+def get_git_info():
+    try:
+        # Get short hash
+        sha = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
+        # Get commit date
+        commit_date = subprocess.check_output(['git', 'log', '-1', '--format=%cd', '--date=format:%Y-%m-%d %H:%M']).decode('ascii').strip()
+        return f"Build: {sha} | {commit_date}"
+    except:
+        # Fallback if git is not initialized or available (e.g., in some cloud environments)
+        return f"Last Refreshed: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("⚙️ App Management")
@@ -168,6 +183,9 @@ with st.sidebar:
         8. **Notes:** Marginalia, ages, or additional family details.
         9. **Source URL:** Direct link to the original record.
         """)
+
+    st.markdown("---")
+    st.caption(get_git_info())
 
 # --- MAIN UI ---
 st.title("🏛️ Antenati Downloader & AI Translator")
