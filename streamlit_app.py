@@ -8,7 +8,6 @@ from PIL import Image
 import google.generativeai as genai
 
 # --- CONFIGURATION ---
-# CHOSEN_MODEL = 'gemini-2.5-flash-lite' 
 CHOSEN_MODEL = 'gemini-3.1-flash-lite' 
 CACHE_TTL = 900 
 HEADERS = {
@@ -140,7 +139,7 @@ def format_csv_row(data, image_id, source_input):
 with st.sidebar:
     st.header("⚙️ App Management")
     st.write(f"**Model:** {CHOSEN_MODEL}")
-    st.write(f"**Cache TTL:** {CACHE_TTL//60}m") # Restored TTL
+    st.write(f"**Cache TTL:** {CACHE_TTL//60}m")
     if st.button("🗑️ Clear Cache & History"):
         st.cache_data.clear()
         st.session_state.history = []
@@ -159,14 +158,15 @@ with st.sidebar:
     with st.expander("📊 CSV Log Guide"):
         st.markdown("""
         **Column Meanings:**
-        * **ID:** Antenati Image ID.
-        * **Type:** Birth, Marriage, Death, etc.
-        * **Subject:** The primary person.
-        * **Date:** Event date.
-        * **Parents:** Names + Maiden Names.
-        * **Town:** Archive location.
-        * **Notes:** Marginalia & ages.
-        * **Source URL:** Direct link.
+        1. **ID:** Antenati Image ID.
+        2. **Type:** Birth, Marriage, Death, etc.
+        3. **Subject:** The primary person of the record.
+        4. **Date:** Event date as written.
+        5. **Father:** Father's full name.
+        6. **Mother:** Mother's full name (including maiden name).
+        7. **Town:** Archive/Registration location.
+        8. **Notes:** Marginalia, ages, or additional family details.
+        9. **Source URL:** Direct link to the original record.
         """)
 
 # --- MAIN UI ---
@@ -210,40 +210,54 @@ if "GEMINI_API_KEY" in st.secrets:
                     st.caption("🔗 Shareable Permalink for this URL")
 
             status_area = st.empty()
-            status_area.info(f"⏳ AI is analyzing record: {input_id}. Results will appear **below the image** once completed...")
-
             st.image(img_data, use_container_width=True)
             st.info(f"📍 **Archival Context:** {record_meta}")
 
-            analysis_text = get_ai_analysis(img_data, record_meta, model)
-            display_text = analysis_text.split("RAW_DATA:")[0].strip()
-            raw_data = extract_raw_data(analysis_text)
-            
-            st.markdown('<div id="findings"></div>', unsafe_allow_html=True)
+            # --- MANUAL TRANSLATION BUTTON ---
             st.markdown("---")
-            st.subheader("📝 AI Findings")
-            st.write(display_text)
-            
-            if raw_data:
-                st.markdown("---")
-                st.subheader("📊 Research Log Data")
+            if st.button(f"✨ Translate with {CHOSEN_MODEL}", type="primary", use_container_width=True):
+                status_area.info(f"⏳ AI is analyzing record: {input_id}. Results will appear **below the image** once completed...")
+                
+                try:
+                    analysis_text = get_ai_analysis(img_data, record_meta, model)
+                    display_text = analysis_text.split("RAW_DATA:")[0].strip()
+                    raw_data = extract_raw_data(analysis_text)
+                    
+                    st.markdown('<div id="findings"></div>', unsafe_allow_html=True)
+                    st.markdown("---")
+                    st.subheader("📝 AI Findings")
+                    st.write(display_text)
+                    
+                    if raw_data:
+                        st.markdown("---")
+                        st.subheader("📊 Research Log Data")
                 
                 # --- NEW HUMAN READABLE TABLE ---
-                st.table({
-                    "Field": ["ID", "Record Type", "Subject", "Date", "Father", "Mother", "Town", "Notes"],
-                    "Value": [input_id, raw_data.get("type"), raw_data.get("subject"), raw_data.get("date"), 
-                              raw_data.get("father"), raw_data.get("mother"), raw_data.get("town"), raw_data.get("notes")]
-                })
-                
+                        st.table({
+                            "Field": ["ID", "Record Type", "Subject", "Date", "Father", "Mother", "Town", "Notes"],
+                            "Value": [input_id, raw_data.get("type"), raw_data.get("subject"), raw_data.get("date"), 
+                                      raw_data.get("father"), raw_data.get("mother"), raw_data.get("town"), raw_data.get("notes")]
+                        })
+                        
                 # --- CSV CODE BLOCK ---
-                csv_row = format_csv_row(raw_data, input_id, raw_input)
-                st.markdown("**CSV Copy-Paste Row:**")
-                st.code(csv_row, language="csv")
-                st.caption("☝️ Use the copy button in the top right to paste this row into your master log.")
-            
-            status_area.success(f"✅ Analysis complete. [View Findings](#findings)")
+                        csv_row = format_csv_row(raw_data, input_id, raw_input)
+                        st.markdown("**CSV Copy-Paste Row:**")
+                        st.code(csv_row, language="csv")
+                        st.caption("☝️ Use the copy button in the top right to paste this row into your master log.")
+                    
+                    status_area.success(f"✅ Analysis complete. [View Findings](#findings)")
+
+                except Exception as e:
+                    status_area.empty()
+                    if "429" in str(e) or "quota" in str(e).lower():
+                        st.warning("⚠️ **Rate Limit Reached:** You've hit your daily or per-minute quota for the Gemini API. Please wait about 60 seconds and try again.")
+                    else:
+                        st.error("❌ **An unexpected error occurred during AI analysis.**")
+                    
+                    with st.expander("Show Technical Error Details"):
+                        st.exception(e)
 
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"Error fetching record: {e}")
 else:
     st.error("🔑 API Key missing in Secrets.")
