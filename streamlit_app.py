@@ -5,6 +5,7 @@ import io
 import requests
 import subprocess
 from datetime import datetime
+import json
 
 # --- 1. BUILD INFO LOGIC ---
 def get_git_info():
@@ -55,9 +56,11 @@ st.sidebar.caption(get_git_info())
 
 # --- 3. MAIN UI ---
 st.title("Antenati Downloader & AI Translator")
+# Restored original example text exactly
 st.markdown("Enter an **Image ID** (e.g., `LzPr8VJ`) or a full **Antenati URL** to begin.")
 
-input_val = st.text_input("Antenati URL or Image ID", placeholder="https://antenati.cultura.gov.it/detail-view/?id=...")
+# Restored original placeholder
+input_val = st.text_input("Antenati URL or Image ID", placeholder="https://antenati.cultura.gov.it/detail-view/?id=26233486")
 
 # --- 4. LOGIC FUNCTIONS ---
 
@@ -75,7 +78,9 @@ def format_csv_row(data, image_id, url):
         data.get("notes", "N/A"), # 9
         str(url)                 # 10
     ]
-    return ",".join([f'"{f}"' for f in fields])
+    # Clean string data of any internal quotes to avoid breaking CSV format
+    clean_fields = [str(f).replace('"', "'") for f in fields]
+    return ",".join([f'"{f}"' for f in clean_fields])
 
 def get_ai_analysis(image_bytes):
     if not api_key:
@@ -91,22 +96,25 @@ def get_ai_analysis(image_bytes):
         response = client.models.generate_content(model=selected_model_id, contents=[prompt, img])
         return response.text if response.text else "Empty response from AI."
     except Exception as e:
-        if "429" in str(e):
+        if "429" in str(e) or "Resource Exhausted" in str(e):
             return "⚠️ Limit Reached. Switch models in the sidebar."
         return f"AI Error: {str(e)}"
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=86400) # Restored 24-hour TTL
 def get_stitched_image(image_id):
-    """Downloads and stitches Antenati IIIF tiles."""
-    # This logic remains consistent with your working tile-stitching code
+    """Downloads image from Antenati IIIF endpoint."""
     base_url = f"https://iiif-antenati.cultura.gov.it/iiif/2/{image_id}/full/full/0/default.jpg"
-    response = requests.get(base_url)
-    if response.status_code == 200:
-        return response.content
+    try:
+        response = requests.get(base_url, timeout=30)
+        if response.status_code == 200:
+            return response.content
+    except Exception as e:
+        st.error(f"Download Error: {e}")
     return None
 
 # --- 5. EXECUTION BLOCK ---
 if input_val:
+    # Handle ID extraction
     input_id = input_val.split("id=")[-1] if "id=" in input_val else input_val
     
     with st.status("Processing Record...", expanded=True) as status:
@@ -118,24 +126,34 @@ if input_val:
             analysis_text = get_ai_analysis(image_data)
             status.update(label="Process Complete!", state="complete", expanded=False)
             
-            # Display Results
+            # Display Image
             st.image(image_data, caption=f"Image ID: {input_id}")
+            
+            # Display Analysis Text
             st.markdown("### AI Analysis")
             st.write(analysis_text)
             
-            # CSV Generation (Example parsing logic for the RAW_DATA block)
+            # CSV Generation & Parsing
             if "RAW_DATA:" in analysis_text:
                 try:
-                    raw_json = analysis_text.split("RAW_DATA:")[1].strip()
-                    import json
-                    parsed_data = json.loads(raw_json)
+                    # Isolate JSON from text
+                    raw_json_str = analysis_text.split("RAW_DATA:")[1].strip()
+                    # Strip markdown blocks if present
+                    if "```" in raw_json_str:
+                        raw_json_str = raw_json_str.split("```")[1]
+                        if raw_json_str.startswith("json"):
+                            raw_json_str = raw_json_str[4:].strip()
+                    
+                    parsed_data = json.loads(raw_json_str)
                     csv_row = format_csv_row(parsed_data, input_id, input_val)
-                    st.markdown("### CSV Log Entry")
+                    
+                    st.markdown("---")
+                    st.markdown("### CSV Log Entry (10 Fields)")
                     st.code(csv_row, language="text")
-                except:
-                    st.warning("Could not parse JSON for CSV. See raw analysis above.")
+                except Exception as e:
+                    st.warning(f"Could not format CSV row: {e}")
         else:
-            status.update(label="Error: Image not found.", state="error")
+            status.update(label="Error: Could not retrieve image.", state="error")
 
 st.divider()
 st.caption("Note: AI translations are probabilistic. Always verify with the original image.")
