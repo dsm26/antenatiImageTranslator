@@ -2,46 +2,55 @@ import streamlit as st
 from google import genai
 from PIL import Image
 import io
+import subprocess
+from datetime import datetime
 
-# --- INITIALIZATION ---
-if "history" not in st.session_state:
-    st.session_state.history = []
+# --- BUILD INFO LOGIC ---
+def get_git_info():
+    try:
+        # Gets the short 7-character hash
+        hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
+        # Gets the date of the last commit
+        date_str = subprocess.check_output(['git', 'log', '-1', '--format=%cd', '--date=format:%Y-%m-%d %H:%M']).decode('ascii').strip()
+        return f"Build: {hash} ({date_str})"
+    except Exception:
+        # Fallback if git is not installed in the environment (e.g. some cloud tiers)
+        return f"Build: Manual Deploy ({datetime.now().strftime('%Y-%m-%d %H:%M')})"
 
-# --- SIDEBAR UI (All settings moved here) ---
-with st.sidebar:
-    st.title("Settings & Info")
-    api_key = st.text_input("Gemini API Key", type="password")
+# --- SIDEBAR UI ---
+st.sidebar.title("Settings & Info")
 
-    # Fixed Model List: No 1.5, includes Accuracy, Stability, and Lite options
-    model_options = {
-        "Gemini 2.5 Flash (Best Accuracy)": "gemini-2.5-flash",
-        "Gemini 3.1 Flash-Lite (Highest Limits)": "gemini-3.1-flash-lite-preview",
-        "Gemini 2.5 Flash-Lite (Very Fast)": "gemini-2.5-flash-lite",
-        "Gemini 2.0 Flash (Stable)": "gemini-2.0-flash"
-    }
+# 1. API Key
+api_key = st.sidebar.text_input("Gemini API Key", type="password")
 
-    selected_display_name = st.selectbox("Gemini Model", list(model_options.keys()), index=0)
-    selected_model_id = model_options[selected_display_name]
+# 2. Model Selector (Using direct notation for maximum visibility)
+model_options = {
+    "Gemini 2.5 Flash (Best Accuracy)": "gemini-2.5-flash",
+    "Gemini 3.1 Flash-Lite (Highest Limits)": "gemini-3.1-flash-lite-preview",
+    "Gemini 2.5 Flash-Lite (Very Fast)": "gemini-2.5-flash-lite",
+    "Gemini 2.0 Flash (Stable)": "gemini-2.0-flash"
+}
 
-    st.markdown("---")
-    st.markdown("""
-    **CSV Log Guide (10 Fields):**
-    1. Image ID
-    2. Record Type
-    3. Subject Name
-    4. Date
-    5. Father's Name
-    6. Mother's Name
-    7. Town/Locality
-    8. Job/Occupation
-    9. Notes
-    10. Source URL
-    """)
+selected_display_name = st.sidebar.selectbox(
+    "Select Gemini Model", 
+    options=list(model_options.keys()), 
+    index=0
+)
+selected_model_id = model_options[selected_display_name]
+
+# 3. CSV Guide
+st.sidebar.markdown("---")
+st.sidebar.markdown("""
+**CSV Log Guide (10 Fields):**
+1. Image ID | 2. Record Type | 3. Subject Name | 4. Date | 5. Father | 6. Mother | 7. Town | 8. Job | 9. Notes | 10. Source URL
+""")
+
+# 4. GitHub Build Version
+st.sidebar.markdown("---")
+st.sidebar.caption(get_git_info())
 
 # --- MAIN UI ---
 st.title("Antenati Downloader & AI Translator")
-st.markdown("Enter an **Image ID** or a full **Antenati URL** to begin.")
-
 input_val = st.text_input("Antenati URL or Image ID", placeholder="https://antenati.cultura.gov.it/detail-view/?id=...")
 
 # --- LOGIC FUNCTIONS ---
@@ -74,12 +83,12 @@ def get_ai_analysis(image_bytes):
         return response.text if response.text else "Empty response from AI."
     except Exception as e:
         if "429" in str(e):
-            return f"⚠️ Limit Reached. Switch to a 'Lite' model in the sidebar."
+            return "⚠️ Limit Reached. Switch models in the sidebar."
         return f"AI Error: {str(e)}"
 
 # --- EXECUTION ---
 if input_val:
-    # (Rest of your stitching and display logic goes here)
+    # Your stitching/processing logic here...
     pass
 
 st.divider()
