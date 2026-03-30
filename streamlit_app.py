@@ -100,14 +100,14 @@ def get_stitched_image(image_id):
 def get_ai_analysis(img_bytes, metadata_context, _model_instance):
     prompt = f"""
     ARCHIVAL CONTEXT: {metadata_context}
-            
+    
     TASK: Analyze this Italian genealogical record (Civil, Church, or Supplemental/Processetti).
     1. Identify Record Type (e.g., Birth, Marriage, Death, Processetti, Allegati, Parish/Latin record), Primary Subject Name, Date of Event, Father's Name, Mother's Name (with maiden name), and Town.
     2. Extract any mentioned Occupation(s) for the parents or subject.
     3. Extract any specific Street Address, House Number, or Parish Name mentioned.
     4. Provide a full transcription of names and any marginalia (noting if the record is in Latin or Italian).
     5. Provide an English Summary of the key findings, including any supplemental documents found in the file.
-                                        
+    
     IMPORTANT: After your summary, provide a single line starting with "RAW_DATA: " followed by a JSON block exactly like this:
     RAW_DATA: {{"type": "...", "subject": "...", "date": "...", "father": "...", "mother": "...", "town": "...", "occupation": "...", "address": "...", "notes": "..."}}
     """
@@ -116,6 +116,24 @@ def get_ai_analysis(img_bytes, metadata_context, _model_instance):
     return response.text
 
 # --- CSV & TABLE HELPERS ---
+def format_csv_row(data, image_id, source_input):
+    if not data: return None
+    source_url = source_input if "http" in source_input else f"https://antenati.cultura.gov.it/ark:/12657/an_ua/{image_id}"
+    row = [
+        image_id,                                # 1
+        data.get("type",""),                     # 2
+        data.get("subject",""),                  # 3
+        data.get("date",""),                     # 4
+        data.get("father",""),                   # 5
+        data.get("mother",""),                   # 6
+        data.get("town",""),                     # 7
+        data.get("occupation",""),               # 8
+        data.get("address",""),                  # 9
+        data.get("notes","").replace("\n", " "), # 10
+        source_url                               # 11
+    ]
+    return ",".join([f'"{str(x)}"' for x in row])
+
 def extract_raw_data(ai_text):
     try:
         match = re.search(r'RAW_DATA:\s*(\{.*?\})', ai_text, re.DOTALL)
@@ -124,22 +142,6 @@ def extract_raw_data(ai_text):
     except:
         return None
     return None
-
-def format_csv_row(data, image_id, source_input):
-    if not data: return None
-    source_url = source_input if "http" in source_input else f"https://antenati.cultura.gov.it/ark:/12657/an_ua/{image_id}"
-    row = [
-        image_id, 
-        data.get("type",""), 
-        data.get("subject",""), 
-        data.get("date",""), 
-        data.get("father",""), 
-        data.get("mother",""), 
-        data.get("town",""), 
-        data.get("notes","").replace("\n", " "),
-        source_url
-    ]
-    return ",".join([f'"{str(x)}"' for x in row])
 
 # --- GIT METADATA HELPER ---
 def get_git_info():
@@ -158,7 +160,11 @@ with st.sidebar:
     st.header("⚙️ App Management")
     
     # Optional API Key Input
-    user_api_key = st.text_input("🔑 Personal Gemini API Key (Optional)", type="password", help="If the app's shared quota is reached, you can use your own key. [Create a free API key here](https://aistudio.google.com/api-keys).")
+    user_api_key = st.text_input(
+        "🔑 Personal Gemini API Key (Optional)", 
+        type="password", 
+        help="If the app's shared quota is reached, you can use your own key. [Create a free API key here](https://aistudio.google.com/api-keys)."
+    )
     
     st.write(f"**Default model:** {CHOSEN_MODEL}")
     st.write(f"**Cache TTL:** {CACHE_TTL//60}m")
@@ -181,15 +187,15 @@ with st.sidebar:
         st.markdown("""
         **Column Meanings:**
         1. **ID:** Antenati Image ID.
-        2. **Type:** Birth, Marriage, Death, etc.
-        3. **Subject:** The primary person of the record.
-        4. **Date:** Event date as written.
+        2. **Type:** Birth, Marriage, Death, *Processetti/Allegati*, or Parish Record.
+        3. **Subject:** The primary person(s) of the record.
+        4. **Date:** Event date (Baptism vs. birth clarified by AI).
         5. **Father:** Father's full name.
         6. **Mother:** Mother's full name (including maiden name).
-        7. **Town:** Archive/Registration location.
+        7. **Town:** Archive location, registration town, or *Parish name*.
         8. **Occupation:** Profession of subject, parents, or witnesses.
         9. **Address:** Street name, house number, or hamlet (frazione).
-        10. **Notes:** Marginalia, ages, or additional family details.
+        10. **Notes:** Marginalia, ages, Latin-to-English clarifications, or supplemental document details.
         11. **Source URL:** Direct link to the original record.
         """)
 
@@ -239,13 +245,12 @@ if final_api_key:
 
             # --- MANUAL TRANSLATION BUTTON & MODEL SELECTOR ---
             st.markdown("---")
-            
+
             # Using vertical_alignment="bottom" ensures the button aligns
             # with the input field, not the label
             model_col, btn_col, spacer = st.columns([2, 2, 4], vertical_alignment="bottom")
 
             with model_col:
-                # Prepending 'gemini-' to fix the 404 errors you encountered
                 selected_model_name = st.selectbox(
                     "AI Model:",
                     options=[
@@ -281,12 +286,29 @@ if final_api_key:
                     if raw_data:
                         st.markdown("---")
                         st.subheader("📊 Research Log Data")
+                        
+                        # Shared source URL logic for Table and CSV
+                        final_source_url = raw_input if "http" in raw_input else f"https://antenati.cultura.gov.it/ark:/12657/an_ua/{input_id}"
                 
-                # --- NEW HUMAN READABLE TABLE ---
                         st.table({
-                            "Field": ["ID", "Record Type", "Subject", "Date", "Father", "Mother", "Town", "Notes"],
-                            "Value": [input_id, raw_data.get("type"), raw_data.get("subject"), raw_data.get("date"), 
-                                      raw_data.get("father"), raw_data.get("mother"), raw_data.get("town"), raw_data.get("notes")]
+                            "Field": [
+                                "1. ID", "2. Record Type", "3. Subject", "4. Date", 
+                                "5. Father", "6. Mother", "7. Town", 
+                                "8. Occupation", "9. Address", "10. Notes", "11. Source URL"
+                            ],
+                            "Value": [
+                                input_id, 
+                                raw_data.get("type"), 
+                                raw_data.get("subject"), 
+                                raw_data.get("date"), 
+                                raw_data.get("father"), 
+                                raw_data.get("mother"), 
+                                raw_data.get("town"), 
+                                raw_data.get("occupation"), 
+                                raw_data.get("address"), 
+                                raw_data.get("notes"),
+                                final_source_url
+                            ]
                         })
                         
                 # --- CSV CODE BLOCK ---
@@ -300,14 +322,14 @@ if final_api_key:
                 except Exception as e:
                     status_area.empty()
                     if "429" in str(e) or "quota" in str(e).lower():
-                        st.warning("⚠️ **Rate Limit Reached:** You've hit your daily or per-minute quota for the Gemini API. Please wait about 60 seconds and try again.")
+                        st.warning("⚠️ **Rate Limit Reached:** API quota hit. Wait a moment or use your own key.")
                     else:
                         st.error("❌ **An unexpected error occurred during AI analysis.**")
-                    
+
                     with st.expander("Show Technical Error Details"):
                         st.exception(e)
 
         except Exception as e:
             st.error(f"Error fetching record: {e}")
 else:
-    st.error("🔑 API Key missing. Please provide a key in the sidebar or check Streamlit Secrets.")
+    st.error("🔑 API Key missing. Provide a key in the sidebar or check Secrets.")
