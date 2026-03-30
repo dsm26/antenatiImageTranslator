@@ -1,3 +1,4 @@
-requests
-Pillow
+streamlit
 google-genai
+Pillow
+requests
