@@ -257,7 +257,7 @@ if final_api_key:
 
             # Using vertical_alignment="bottom" ensures the button aligns
             # with the input field, not the label
-            model_col, btn_col, spacer = st.columns([2, 2, 4], vertical_alignment="bottom")
+            model_col, btn_col, key_status_col, spacer = st.columns([2, 2, 3, 1], vertical_alignment="bottom")
 
             with model_col:
                 selected_model_name = st.selectbox(
