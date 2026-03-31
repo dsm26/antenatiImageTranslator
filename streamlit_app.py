@@ -27,7 +27,7 @@ def track_ga_event(event_name, params=None):
             window.dataLayer = window.dataLayer || [];
             function gtag(){{dataLayer.push(arguments);}}
             gtag('js', new Date());
-            gtag('config', '{GA_MEASUREMENT_ID}');
+            gtag('config', '{GA_MEASUREMENT_ID}', {{ 'debug_mode': true }});
             gtag('event', '{event_name}', {json.dumps(params)});
         </script>
     """
