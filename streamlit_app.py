@@ -27,7 +27,14 @@ def track_ga_event(event_name, params=None):
             window.dataLayer = window.dataLayer || [];
             function gtag(){{dataLayer.push(arguments);}}
             gtag('js', new Date());
-            gtag('config', '{GA_MEASUREMENT_ID}', {{ 'debug_mode': true }});
+            
+            // CRITICAL FIX: Add cookie_flags for iframe compatibility
+            gtag('config', '{GA_MEASUREMENT_ID}', {{ 
+                'debug_mode': true,
+                'cookie_prefix': 'ga_iframe',
+                'cookie_flags': 'SameSite=None;Secure' 
+            }});
+            
             gtag('event', '{event_name}', {json.dumps(params)});
         </script>
     """
