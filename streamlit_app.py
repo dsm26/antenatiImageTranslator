@@ -311,6 +311,7 @@ st.markdown(f"""
 **Example ID:** LzPr8VJ<br>
 **Example URLs:**<br>
 https://antenati.cultura.gov.it/ark:/12657/an_ua264421/LzPr8VJ<br>
+https://antenati.cultura.gov.it/ark:/12657/an_ua264421/LzPr8x9<br>
 https://antenati.cultura.gov.it/ark:/12657/an_ua36205266/Le8qveo<br>
 https://antenati.cultura.gov.it/ark:/12657/an_ua36203217/Lz7XnvP<br>
 """, unsafe_allow_html=True)
