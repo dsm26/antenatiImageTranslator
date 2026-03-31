@@ -161,7 +161,10 @@ def get_stitched_image(image_id, source_input):
 
     # Embed metadata into EXIF (Tag 270 is ImageDescription)
     exif = final_img.getexif()
+    # Tag 270: ImageDescription (Standard)
     exif[270] = f"Source: {source_input}"
+    # Tag 37510: UserComment (Often more reliable for Windows 'Comments' field)
+    exif[37510] = f"Source: {source_input}"
 
     buf = BytesIO()
     final_img.save(buf, format="JPEG", quality=95, exif=exif)
@@ -369,6 +372,7 @@ if final_api_key:
                     
                     st.markdown('<div id="findings"></div>', unsafe_allow_html=True)
                     st.markdown("---")
+                    st.info("💡 **Be kind!** By default, this page uses a shared Google Gemini AI account with a daily rate limit. If you plan to perform many translations, please [create your own free Gemini API key](https://aistudio.google.com/api-keys) and specify it in the left sidebar.")
                     st.subheader("📝 AI Findings")
                     st.write(display_text)
                     
