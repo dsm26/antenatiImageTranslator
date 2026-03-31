@@ -335,7 +335,11 @@ if final_api_key:
                             # Census/Index Multi-row table
                             cols = raw_data.get("columns", [])
                             rows = raw_data.get("rows", [])
-                            st.dataframe(data=rows, columns=cols, use_container_width=True)
+
+                            # Convert list of lists to list of dicts so Streamlit shows headers
+                            formatted_data = [dict(zip(cols, row)) for row in rows]
+                            st.dataframe(data=formatted_data, use_container_width=True)
+
                         else:
                             # Standard Individual Record table
                             st.table({
