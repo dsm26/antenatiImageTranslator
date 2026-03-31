@@ -8,6 +8,7 @@ from PIL import Image
 import google.generativeai as genai
 import subprocess
 from datetime import datetime
+import uuid
 
 
 # --- CONFIGURATION ---
@@ -17,6 +18,39 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     "Referer": "https://antenati.cultura.gov.it/",
 }
+
+# --- GOOGLE ANALYTICS TRACKING ---
+def track_ga_event(event_name, extra_params=None):
+    try:
+        api_secret = st.secrets.get("GA_API_SECRET")
+        measurement_id = st.secrets.get("GA_MEASUREMENT_ID")
+        if not api_secret or not measurement_id:
+            return
+
+        # Get real user IP from Streamlit Cloud proxy headers for location
+        user_ip = st.context.headers.get("X-Forwarded-For", "0.0.0.0").split(",")[0]
+        user_agent = st.context.headers.get("User-Agent", "Unknown")
+        
+        if "ga_client_id" not in st.session_state:
+            st.session_state.ga_client_id = str(uuid.uuid4())
+
+        url = f"https://www.google-analytics.com/mp/collect?measurement_id={measurement_id}&api_secret={api_secret}"
+        
+        payload = {
+            "client_id": st.session_state.ga_client_id,
+            "events": [{
+                "name": event_name,
+                "params": {
+                    "ip_override": user_ip,
+                    "user_agent": user_agent,
+                    "engagement_time_msec": "1",
+                    **(extra_params or {})
+                }
+            }]
+        }
+        requests.post(url, data=json.dumps(payload), timeout=2)
+    except:
+        pass
 
 # --- AI PROMPT CONFIGURATION ---
 DEFAULT_PROMPT = """
@@ -279,6 +313,9 @@ if final_api_key:
             record_meta = get_antenati_metadata(raw_input if "http" in raw_input else input_id)
             img_data = get_stitched_image(input_id)
             
+            # --- TRACK IMAGE STITCHING/VIEW ---
+            track_ga_event("image_stitched", {"image_id": input_id, "metadata": record_meta[:100]})
+            
             # Action Row
             col1, spacer = st.columns([2, 8])
             with col1:
@@ -316,6 +353,7 @@ if final_api_key:
             status_area = st.empty()
 
             if translate_clicked:
+                track_ga_event("ai_translation_started", {"model": selected_model_name, "image_id": input_id})
                 current_model = genai.GenerativeModel(selected_model_name)
                 status_area.info(f"⏳ AI is analyzing record: {input_id}. Results will appear **below** once completed...")
                 
