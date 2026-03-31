@@ -4,7 +4,7 @@ import requests
 import re
 import json
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import google.generativeai as genai
 import subprocess
 from datetime import datetime
@@ -135,12 +135,16 @@ def get_stitched_image(image_id, source_input):
     
     w, h = info["width"], info["height"]
     
+    # Border/Footer settings
+    footer_height = 50
+    
     # Corrected extraction logic for tile dimensions
     first_tile = info["tiles"][0]
     tw = first_tile["width"]
     th = first_tile.get("height", tw)
     
-    final_img = Image.new("RGB", (w, h))
+    # Create canvas with extra room at the bottom for visual metadata
+    final_img = Image.new("RGB", (w, h + footer_height), (255, 255, 255))
     cols, rows = math.ceil(w / tw), math.ceil(h / th)
     total_tiles = rows * cols
     
@@ -158,6 +162,18 @@ def get_stitched_image(image_id, source_input):
             final_img.paste(tile_data, (x, y))
     
     progress_placeholder.empty()
+
+    # --- ADD TEXT OVERLAY ---
+    draw = ImageDraw.Draw(final_img)
+    try:
+        # standard linux/cloud font path
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
+    except:
+        font = ImageFont.load_default()
+
+    label_text = f"Source: {source_input}"
+    # Draw the text in the new white space (the footer)
+    draw.text((20, h + 10), label_text, fill=(0, 0, 0), font=font)
 
     # Embed metadata into EXIF (Tag 270 is ImageDescription)
     exif = final_img.getexif()
