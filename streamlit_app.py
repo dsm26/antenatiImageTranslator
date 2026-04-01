@@ -402,7 +402,6 @@ if final_api_key:
                     "💡 **Be kind!** By default, this page uses a shared account with a daily rate limit. "
                     "If you plan to perform many translations, please use your own key in the sidebar."
                 )
-                )
                 
                 try:
                     analysis_text = get_ai_analysis(img_data, record_meta, current_model)
