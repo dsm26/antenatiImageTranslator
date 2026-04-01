@@ -307,16 +307,26 @@ with st.sidebar:
 # --- MAIN UI ---
 st.title("🏛️ Antenati Downloader & AI Translator")
 
-st.markdown(f"""
-💡 **How to use:** Paste a **Full URL** (recommended) or an **Image ID**. <br>
-🔗 **Quick Link:** Pass parameters in the browser bar using `?url=FULL_URL` or `?image_id=ID`. <br>
-**Example ID:** LzPr8VJ<br>
-**Example URLs:**<br>
-https://antenati.cultura.gov.it/ark:/12657/an_ua264421/LzPr8VJ<br>
-https://antenati.cultura.gov.it/ark:/12657/an_ua264421/LzPr8x9<br>
-https://antenati.cultura.gov.it/ark:/12657/an_ua36205266/Le8qveo<br>
-https://antenati.cultura.gov.it/ark:/12657/an_ua36203217/Lz7XnvP<br>
-""", unsafe_allow_html=True)
+with st.expander("ℹ️ Instructions & Related Tools"):
+    st.markdown("""
+    This tool is designed for use with the official [Antenati portal](https://antenati.cultura.gov.it/), 
+    not the copies found on FamilySearch.
+
+    **How to use:**
+    1. Find the record image you want to download on the Antenati website.
+    2. Look for the link labeled "Copia link del bookmark" on that page and click it to copy the address.
+    3. Paste that link into the box below.
+
+    **Example URLs:**
+    * https://antenati.cultura.gov.it/ark:/12657/an_ua264421/LzPr8VJ
+    * https://antenati.cultura.gov.it/ark:/12657/an_ua264421/LzPr8x9
+    * https://antenati.cultura.gov.it/ark:/12657/an_ua36205266/Le8qveo
+    * https://antenati.cultura.gov.it/ark:/12657/an_ua36203217/Lz7XnvP
+
+    **Example ID:** LzPr8VJ
+
+    🔗 **Quick Link:** Pass parameters in the browser bar using `?url=FULL_URL` or `?image_id=ID`.
+    """)
 
 # Determine which API key to use (Personal > Secret)
 final_api_key = user_api_key if user_api_key else st.secrets.get("GEMINI_API_KEY")
