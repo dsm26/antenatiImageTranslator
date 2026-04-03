@@ -95,6 +95,9 @@ if "page_loaded" not in st.session_state:
 if "history" not in st.session_state:
     st.session_state.history = []
 
+if "last_tracked_path" not in st.session_state:
+    st.session_state.last_tracked_path = None
+
 # --- ROBUST METADATA EXTRACTION ---
 @st.cache_data(show_spinner=False, ttl=CACHE_TTL)
 def get_antenati_metadata(input_str):
@@ -132,7 +135,7 @@ def get_antenati_metadata(input_str):
 
 # --- DOWNLOAD & STITCHING ---
 @st.cache_data(show_spinner=False, ttl=CACHE_TTL)
-def get_stitched_image(image_id, source_input):
+def get_stitched_image(cache_key, image_id, source_input):
     base_url = f"https://iiif-antenati.cultura.gov.it/iiif/2/{image_id}"
     try:
         info_resp = requests.get(f"{base_url}/info.json", headers=HEADERS)
@@ -279,6 +282,7 @@ with st.sidebar:
     if st.button("🗑️ Clear Cache & History"):
         st.cache_data.clear()
         st.session_state.history = []
+        st.session_state.last_tracked_path = None
         st.rerun()
 
     if st.session_state.history:
@@ -369,20 +373,26 @@ if final_api_key:
     ark_part1 = ""
     ark_part2 = ""
     ark_match = re.search(r'ark:/12657/(an_ua\d+)/([^/?#]+)', raw_input)
+    
+    ark_path = ""
     if ark_match:
         ark_part1 = ark_match.group(1)
         ark_part2 = ark_match.group(2)
-        track_ga_event("ark_components_tracked", {"ark_unit": ark_part1, "ark_id": ark_part2})
-        
-        # --- NEW: TRACK FULL RECONSTRUCTED PATH ---
         ark_path = f"{ark_part1}/{ark_part2}"
-        track_ga_event("record_path_logged", {"ark_path": ark_path})
 
     input_id = raw_input.strip().split('/')[-1] if "/" in raw_input else raw_input.strip()
     
     # Simple validation for invalid ID formats
-    if input_id and not re.match(r'^[A-Za-z0-9]+$', input_id):
-        track_ga_event("invalid_input_error", {"input_value": input_id[:50]})
+    current_identifier = ark_path if ark_path else input_id
+    if current_identifier and current_identifier != st.session_state.last_tracked_path:
+        if ark_match:
+            track_ga_event("ark_components_tracked", {"ark_unit": ark_part1, "ark_id": ark_part2})
+            track_ga_event("record_path_logged", {"ark_path": ark_path})
+        
+        if input_id and not re.match(r'^[A-Za-z0-9]+$', input_id):
+            track_ga_event("invalid_input_error", {"input_value": input_id[:50]})
+        
+        st.session_state.last_tracked_path = current_identifier
 
     if input_id:
         if input_id not in st.session_state.history:
@@ -390,10 +400,15 @@ if final_api_key:
 
         try:
             record_meta = get_antenati_metadata(raw_input if "http" in raw_input else input_id)
-            img_data = get_stitched_image(input_id, raw_input)
             
-            # --- TRACK IMAGE STITCHING/VIEW ---
-            track_ga_event("image_stitched", {"image_id": input_id, "metadata": record_meta[:100]})
+            # Cache using ark_path if available
+            cache_key = ark_path if ark_path else input_id
+            img_data = get_stitched_image(cache_key, input_id, raw_input)
+            
+            # --- TRACK IMAGE STITCHING/VIEW (only once per ID) ---
+            if "last_stitched_id" not in st.session_state or st.session_state.last_stitched_id != input_id:
+                track_ga_event("image_stitched", {"image_id": input_id, "metadata": record_meta[:100]})
+                st.session_state.last_stitched_id = input_id
             
             # Determine descriptive filename
             save_name = f"{ark_part1}_{input_id}.jpg" if ark_part1 else f"{input_id}.jpg"
@@ -442,7 +457,6 @@ if final_api_key:
                     track_ga_event("personal_key_used_for_translation")
                 
                 current_model = genai.GenerativeModel(selected_model_name)
-                status_area.info(f"⏳ AI is analyzing record: {input_id}. Results will appear **below** once completed...")
                 status_area.info(
                     f"⏳ AI is analyzing record: {input_id}. Results will appear **below** once completed...\n\n"
                     "💡 **Note:** By default, this page uses a shared account with a daily rate limit. "
