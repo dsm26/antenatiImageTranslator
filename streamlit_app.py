@@ -345,15 +345,15 @@ with st.expander("ℹ️ Instructions"):
     **📥 Best Way to Save**
     For the best results, always use the **"Download" button** rather than right-clicking the image:
 
-    * **Automatic Naming:** The button automatically names your file using the **Image ID** so your records stay organized.
-    * **Source Tracking:** The app "tags" the image file by embedding the **original Antenati URL** directly into the file's data (metadata).
-    * **Why avoid right-clicking?** If you "Save Image As" from the preview, your computer will give it a **random name** and the link to the original record will not be embedded in the image.
+       * **Automatic Naming:** The button automatically names your file using the **Image ID** so your records stay organized.
+       * **Source Tracking:** The app "tags" the image file by embedding the **original Antenati URL** directly into the file's data (metadata).
+       * **Why avoid right-clicking?** If you "Save Image As" from the preview, your computer will give it a **random name** and the link to the original record will not be embedded in the image.
+
 
     🔗 **Quick Link:** Pass parameters in the browser bar using `?url=FULL_URL` or `?image_id=ID`.
 
-    💡 **AI Use:** By default, this page uses a shared Google Gemini AI account with a daily rate limit for the AI translations. If you plan to perform many translations (e.g. over 100), please [create your own free Gemini API key](https://aistudio.google.com/api-keys) and specify it in the left sidebar.
 
-    There is no rate limit for the image downloading.
+    💡 **AI Use:** By default, this page uses a shared Google Gemini AI account with a daily rate limit for the AI translations. If you plan to perform many translations (e.g. over 100), please [create your own free Gemini API key](https://aistudio.google.com/api-keys) and specify it in the left sidebar. There is no rate limit for the image downloading.
     """)
 
 # Determine which API key to use (Personal > Secret)
