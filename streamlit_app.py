@@ -373,6 +373,10 @@ if final_api_key:
         ark_part1 = ark_match.group(1)
         ark_part2 = ark_match.group(2)
         track_ga_event("ark_components_tracked", {"ark_unit": ark_part1, "ark_id": ark_part2})
+        
+        # --- NEW: TRACK FULL RECONSTRUCTED PATH ---
+        ark_path = f"{ark_part1}/{ark_part2}"
+        track_ga_event("record_path_logged", {"ark_path": ark_path})
 
     input_id = raw_input.strip().split('/')[-1] if "/" in raw_input else raw_input.strip()
     
@@ -391,10 +395,13 @@ if final_api_key:
             # --- TRACK IMAGE STITCHING/VIEW ---
             track_ga_event("image_stitched", {"image_id": input_id, "metadata": record_meta[:100]})
             
+            # Determine descriptive filename
+            save_name = f"{ark_part1}_{input_id}.jpg" if ark_part1 else f"{input_id}.jpg"
+
             # Action Row
             col1, spacer = st.columns([2, 8])
             with col1:
-                dl_btn = st.download_button("📥 Download JPG", img_data, f"{input_id}.jpg", "image/jpeg", use_container_width=True)
+                dl_btn = st.download_button("📥 Download JPG", img_data, save_name, "image/jpeg", use_container_width=True)
                 if dl_btn:
                     track_ga_event("download_button_pushed", {"image_id": input_id})
 
