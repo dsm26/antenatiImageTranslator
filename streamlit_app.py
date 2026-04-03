@@ -413,24 +413,14 @@ if final_api_key:
             # Determine descriptive filename
             save_name = f"{ark_part1}_{input_id}.jpg" if ark_part1 else f"{input_id}.jpg"
 
-            # Action Row
-            col1, spacer = st.columns([2, 8])
-            with col1:
-                dl_btn = st.download_button("📥 Download JPG", img_data, save_name, "image/jpeg", use_container_width=True)
-                if dl_btn:
-                    track_ga_event("download_button_pushed", {"image_id": input_id})
-
-            st.image(img_data, use_container_width=True)
-            st.info(f"📍 **Archival Context:** {record_meta}")
-
-            # --- MANUAL TRANSLATION BUTTON & MODEL SELECTOR ---
+            # --- MODEL SELECTOR & AI BUTTON (Now Above Image) ---
             st.markdown("---")
+            model_col, btn_col, spacer = st.columns([4, 2, 4], vertical_alignment="bottom")
 
-            model_col, btn_col, key_status_col, spacer = st.columns([2, 2, 3, 1], vertical_alignment="bottom")
-
+            key_suffix = "(personal Gemini key)" if user_api_key else "(default Gemini key)"
             with model_col:
                 selected_model_name = st.selectbox(
-                    "AI Model:",
+                    f"AI Model {key_suffix}:",
                     options=[
                         "gemini-3.1-flash-lite-preview", 
                         "gemini-2.5-flash", 
@@ -443,11 +433,15 @@ if final_api_key:
             with btn_col:
                 translate_clicked = st.button("Translate with AI", type="primary", use_container_width=True)
 
-            with key_status_col:
-                if user_api_key:
-                    st.write("using your personal Gemini API key")
-                else:
-                    st.write("using default Gemini API key")
+            # Action Row
+            col1, spacer_dl = st.columns([2, 8])
+            with col1:
+                dl_btn = st.download_button("📥 Download JPG", img_data, save_name, "image/jpeg", use_container_width=True)
+                if dl_btn:
+                    track_ga_event("download_button_pushed", {"image_id": input_id})
+
+            st.image(img_data, use_container_width=True)
+            st.info(f"📍 **Archival Context:** {record_meta}")
 
             status_area = st.empty()
 
