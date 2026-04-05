@@ -9,9 +9,10 @@ import google.generativeai as genai
 import subprocess
 from datetime import datetime
 import uuid
-
+import traceback
 
 # --- CONFIGURATION ---
+APP_NAME = "Antenati Downloader & AI Translator"
 CHOSEN_MODEL = 'gemini-3.1-flash-lite-preview' 
 CACHE_TTL = 900 
 HEADERS = {
@@ -52,6 +53,23 @@ def track_ga_event(event_name, extra_params=None):
     except:
         pass
 
+# --- REFACTORED LOGGING FUNCTION ---
+def log_to_gsheets(sheet_name, row_data):
+    """Targeted logging for usage, error, and ai tabs."""
+    script_url = st.secrets.get("GSHEET_WEBAPP_URL")
+    if not script_url:
+        return
+    
+    payload = {
+        "sheetName": sheet_name,
+        "rowData": [datetime.now().strftime('%Y-%m-%d %H:%M:%S'), st.session_state.ga_client_id] + row_data
+    }
+    
+    try:
+        requests.post(script_url, json=payload, timeout=5)
+    except:
+        pass
+
 # --- AI PROMPT CONFIGURATION ---
 DEFAULT_PROMPT = """
     ARCHIVAL CONTEXT: {metadata_context}
@@ -85,7 +103,7 @@ DEFAULT_PROMPT = """
     RAW_DATA: {{"format": "list", "type": "...", "columns": ["Name", "Detail 1", "Detail 2"], "rows": [["Name 1", "Val 1", "Val 2"], ["Name 2", "Val 3", "Val 4"]]}}
     """
 
-st.set_page_config(page_title="Antenati Downloader & AI Translator", page_icon="🏛️", layout="wide")
+st.set_page_config(page_title=APP_NAME, page_icon="🏛️", layout="wide")
 
 # --- INITIAL PAGE LOAD TRACKING ---
 if "page_loaded" not in st.session_state:
@@ -143,6 +161,7 @@ def get_stitched_image(cache_key, image_id, source_input):
         info = info_resp.json()
     except Exception as e:
         track_ga_event("antenati_error", {"error_type": "info_json", "image_id": image_id})
+        log_to_gsheets("error_logs", [APP_NAME, source_input, "Stitching Error (Info JSON)", str(e), traceback.format_exc()])
         raise e
     
     w, h = info["width"], info["height"]
@@ -176,6 +195,7 @@ def get_stitched_image(cache_key, image_id, source_input):
                 final_img.paste(tile_data, (x, y))
             except Exception as e:
                 track_ga_event("antenati_error", {"error_type": "tile_download", "image_id": image_id})
+                log_to_gsheets("error_logs", [APP_NAME, source_input, "Stitching Error (Tile)", str(e), traceback.format_exc()])
                 raise e
     
     progress_placeholder.empty()
@@ -221,7 +241,6 @@ def format_csv_row(data, image_id, source_input):
     
     if data.get("format") == "list":
         rows = []
-        headers = ["ID", "Type", "Source"] + data.get("columns", [])
         for r in data.get("rows", []):
             row_data = [image_id, data.get("type"), source_url] + r
             rows.append(",".join([f'"{str(x)}"' for x in row_data]))
@@ -327,7 +346,7 @@ with st.sidebar:
     st.caption(get_git_info())
 
 # --- MAIN UI ---
-st.title("🏛️ Antenati Downloader & AI Translator")
+st.title(f"🏛️ {APP_NAME}")
 
 with st.expander("ℹ️ Instructions"):
     st.markdown("""
@@ -370,31 +389,11 @@ if final_api_key:
     
     raw_input = st.text_input("Paste Antenati URL or Image ID:", value=initial_value)
     
-    # --- URL VALIDATION & ARK TRACKING ---
-    ark_part1 = ""
-    ark_part2 = ""
+    # --- URL VALIDATION ---
     ark_match = re.search(r'ark:/12657/(an_ua\d+)/([^/?#]+)', raw_input)
-    
-    ark_path = ""
-    if ark_match:
-        ark_part1 = ark_match.group(1)
-        ark_part2 = ark_match.group(2)
-        ark_path = f"{ark_part1}/{ark_part2}"
-
+    ark_part1 = ark_match.group(1) if ark_match else ""
     input_id = raw_input.strip().split('/')[-1] if "/" in raw_input else raw_input.strip()
     
-    # Simple validation for invalid ID formats
-    current_identifier = ark_path if ark_path else input_id
-    if current_identifier and current_identifier != st.session_state.last_tracked_path:
-        if ark_match:
-            track_ga_event("ark_components_tracked", {"ark_unit": ark_part1, "ark_id": ark_part2})
-            track_ga_event("record_path_logged", {"ark_path": ark_path})
-        
-        if input_id and not re.match(r'^[A-Za-z0-9]+$', input_id):
-            track_ga_event("invalid_input_error", {"input_value": input_id[:50]})
-        
-        st.session_state.last_tracked_path = current_identifier
-
     if input_id:
         if raw_input not in st.session_state.history:
             st.session_state.history.append(raw_input)
@@ -407,7 +406,11 @@ if final_api_key:
             
             # --- TRACK IMAGE STITCHING/VIEW (only once per ID) ---
             if "last_stitched_id" not in st.session_state or st.session_state.last_stitched_id != input_id:
-                track_ga_event("image_stitched", {"image_id": input_id, "metadata": record_meta[:100]})
+                track_ga_event("image_stitched", {"image_id": input_id})
+
+                # --- TRIGGER 1: Tab 1 (usage_logs) ---
+                # Tab 1: [Timestamp, Session_ID, App_Name, ARK_Unit, ARK_URL]
+                log_to_gsheets("usage_logs", [APP_NAME, ark_part1, raw_input])
                 st.session_state.last_stitched_id = input_id
             
             # Determine descriptive filename
@@ -422,11 +425,11 @@ if final_api_key:
                 selected_model_name = st.selectbox(
                     f"AI Model {key_suffix}:",
                     options=[
-                        "gemini-3.1-flash-lite-preview", 
-                        "gemini-2.5-flash", 
-                        "gemini-2.5-flash-lite", 
+                        "gemini-3.1-flash-lite-preview",
+                        "gemini-2.5-flash",
+                        "gemini-2.5-flash-lite",
                         "gemini-3.1-flash-lite"
-                    ],
+                        ], 
                     index=0
                 )
 
@@ -447,19 +450,25 @@ if final_api_key:
             st.info(f"📍 **Archival Context:** {record_meta}")
 
             if translate_clicked:
-                track_ga_event("ai_translation_started", {"model": selected_model_name, "image_id": input_id})
+                track_ga_event("ai_translation_started", {"model": selected_model_name})
                 if user_api_key:
                     track_ga_event("personal_key_used_for_translation")
                 
                 current_model = genai.GenerativeModel(selected_model_name)
                 status_area.info(
                     f"⏳ AI is analyzing record: {input_id}. Results will appear **below** once completed...\n\n"
-                    "By default, this page uses a shared account with a daily rate limit. "
-                    "If you plan to perform many translations (e.g. over 100), please use your own key in the sidebar."
+                    f"By default, this page uses a shared account with a daily rate limit. "
+                    f"If you plan to perform many translations, please use your own key in the sidebar."
                 )
                 
                 try:
                     analysis_text = get_ai_analysis(img_data, record_meta, current_model, selected_model_name)
+                    
+                    # --- TRIGGER 3: Tab 3 (ai_logs) ---
+                    key_type = "Personal" if user_api_key else "Shared"
+                    # Tab 3: [Timestamp, Session_ID, ARK_Unit, Model_Used, Key_Type]
+                    log_to_gsheets("ai_logs", [ark_part1, selected_model_name, key_type])
+
                     display_text = analysis_text.split("RAW_DATA:")[0].strip()
                     raw_data = extract_raw_data(analysis_text)
                     
@@ -481,31 +490,39 @@ if final_api_key:
                             # Convert list of lists to list of dicts so Streamlit shows headers
                             formatted_data = [dict(zip(cols, row)) for row in rows]
                             st.dataframe(data=formatted_data, use_container_width=True)
-
+                            
                         else:
                             # Standard Individual Record table
                             st.table({
                                 "Field": [
-                                    "1. ID", "2. Record Type", "3. Subject", "4. Date", 
-                                    "5. Father", "6. Mother", "7. Town", 
-                                    "8. Occupation", "9. Address", "10. Notes", "11. Source URL"
-                                ],
-                                "Value": [
-                                    input_id, 
-                                    raw_data.get("type"), 
-                                    raw_data.get("subject"), 
-                                    raw_data.get("date"), 
-                                    raw_data.get("father"), 
-                                    raw_data.get("mother"), 
-                                    raw_data.get("town"), 
-                                    raw_data.get("occupation"), 
-                                    raw_data.get("address"), 
-                                    raw_data.get("notes"),
-                                    final_source_url
-                                ]
-                            })
-                        
-                # --- CSV CODE BLOCK ---
+                                "1. ID",
+                                "2. Record Type",
+                                "3. Subject",
+                                "4. Date", 
+                                "5. Father",
+                                "6. Mother",
+                                "7. Town", 
+                                "8. Occupation",
+                                "9. Address",
+                                "10. Notes",
+                                "11. Source URL"
+                            ],
+                            "Value": [
+                                input_id,
+                                raw_data.get("type"),
+                                raw_data.get("subject"), 
+                                raw_data.get("date"),
+                                raw_data.get("father"),
+                                raw_data.get("mother"), 
+                                raw_data.get("town"),
+                                raw_data.get("occupation"),
+                                raw_data.get("address"), 
+                                raw_data.get("notes"),
+                                final_source_url
+                            ]
+                          })
+                            
+                        # --- CSV CODE BLOCK ---
                         csv_row = format_csv_row(raw_data, input_id, raw_input)
                         st.markdown("**CSV Copy-Paste Row(s):**")
                         st.code(csv_row, language="csv")
@@ -516,9 +533,15 @@ if final_api_key:
                     )
 
                 except Exception as e:
-                    track_ga_event("gemini_api_error", {"error_msg": str(e)[:100]})
+                    # --- TRIGGER 2: Tab 2 (error_logs) ---
                     status_area.empty()
-                    if "429" in str(e) or "quota" in str(e).lower():
+                    err_msg = str(e)
+                    tb_str = traceback.format_exc()
+                    
+                    # Tab 2: [Timestamp, Session_ID, App_Name, ARK_URL, Error_Type, Error_Msg, Traceback]
+                    log_to_gsheets("error_logs", [APP_NAME, raw_input, type(e).__name__, err_msg, tb_str])
+                    
+                    if "429" in err_msg or "quota" in err_msg.lower():
                         st.warning("⚠️ **Rate Limit Reached:** API quota hit. Wait a moment or use your own key.")
                     else:
                         st.error("❌ **An unexpected error occurred during AI analysis.**")
@@ -528,5 +551,7 @@ if final_api_key:
 
         except Exception as e:
             st.error(f"Error fetching record: {e}")
+            # --- TRIGGER 2: Tab 2 (error_logs) for Fetch/Metadata Errors ---
+            log_to_gsheets("error_logs", [APP_NAME, raw_input, "Fetch/Metadata Error", str(e), traceback.format_exc()])
 else:
     st.error("🔑 API Key missing. Provide a key in the sidebar or check Secrets.")
