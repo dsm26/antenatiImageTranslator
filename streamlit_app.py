@@ -469,7 +469,7 @@ if final_api_key:
                     # --- TRIGGER 3: Tab 3 (ai_logs) ---
                     key_type = "Personal" if user_api_key else "Shared"
                     # Tab 3: [Timestamp, Session_ID, ARK_Unit, Model_Used, Key_Type]
-                    log_to_gsheets("ai_logs", [APP_NAME, ark_part1, selected_model_name, key_type])
+                    log_to_gsheets("ai_logs", [APP_NAME, ark_part1, raw_input, selected_model_name, key_type])
 
                     display_text = analysis_text.split("RAW_DATA:")[0].strip()
                     raw_data = extract_raw_data(analysis_text)
