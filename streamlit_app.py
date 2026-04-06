@@ -155,7 +155,7 @@ def get_antenati_metadata(input_str):
 
 # --- DOWNLOAD & STITCHING ---
 @st.cache_data(show_spinner=False, ttl=CACHE_TTL)
-def get_stitched_image(cache_key, image_id, source_input):
+def get_stitched_image(cache_key, image_id, source_input, ark_unit=""):
     base_url = f"https://iiif-antenati.cultura.gov.it/iiif/2/{image_id}"
     try:
         info_resp = requests.get(f"{base_url}/info.json", headers=HEADERS)
@@ -163,7 +163,7 @@ def get_stitched_image(cache_key, image_id, source_input):
         info = info_resp.json()
     except Exception as e:
         track_ga_event("antenati_error", {"error_type": "info_json", "image_id": image_id})
-        log_to_gsheets("error_logs", [APP_NAME, source_input, "Stitching Error (Info JSON)", str(e), traceback.format_exc()])
+        log_to_gsheets("error_logs", [APP_NAME, ark_unit, source_input, "Stitching Error (Info JSON)", str(e), traceback.format_exc()])
         raise e
     
     w, h = info["width"], info["height"]
@@ -197,7 +197,7 @@ def get_stitched_image(cache_key, image_id, source_input):
                 final_img.paste(tile_data, (x, y))
             except Exception as e:
                 track_ga_event("antenati_error", {"error_type": "tile_download", "image_id": image_id})
-                log_to_gsheets("error_logs", [APP_NAME, source_input, "Stitching Error (Tile)", str(e), traceback.format_exc()])
+                log_to_gsheets("error_logs", [APP_NAME, ark_unit, source_input, "Stitching Error (Tile)", str(e), traceback.format_exc()])
                 raise e
     
     progress_placeholder.empty()
@@ -403,8 +403,14 @@ if final_api_key:
         try:
             record_meta = get_antenati_metadata(raw_input if "http" in raw_input else input_id)
             
+            # --- Robust Ark Part 1 Fallback ---
+            if not ark_part1:
+                meta_match = re.search(r'an_ua\d+', record_meta)
+                if meta_match:
+                    ark_part1 = meta_match.group(0)
+
             # Cache using full raw_input (URL or ID)
-            img_data = get_stitched_image(raw_input, input_id, raw_input)
+            img_data = get_stitched_image(raw_input, input_id, raw_input, ark_unit=ark_part1)
             
             # --- TRACK IMAGE STITCHING/VIEW (only once per ID) ---
             if "last_stitched_id" not in st.session_state or st.session_state.last_stitched_id != input_id:
@@ -467,8 +473,8 @@ if final_api_key:
                     analysis_text = get_ai_analysis(img_data, record_meta, current_model, selected_model_name)
                     
                     # --- TRIGGER 3: Tab 3 (ai_logs) ---
+                    # Tab 3: [Timestamp, Session_ID, App_Name, ARK_Unit, ARK_URL, Model_Used, Key_Type]
                     key_type = "Personal" if user_api_key else "Shared"
-                    # Tab 3: [Timestamp, Session_ID, ARK_Unit, Model_Used, Key_Type]
                     log_to_gsheets("ai_logs", [APP_NAME, ark_part1, raw_input, selected_model_name, key_type])
 
                     display_text = analysis_text.split("RAW_DATA:")[0].strip()
@@ -540,8 +546,8 @@ if final_api_key:
                     err_msg = str(e)
                     tb_str = traceback.format_exc()
                     
-                    # Tab 2: [Timestamp, Session_ID, App_Name, ARK_URL, Error_Type, Error_Msg, Traceback]
-                    log_to_gsheets("error_logs", [APP_NAME, raw_input, type(e).__name__, err_msg, tb_str])
+                    # Tab 2: [Timestamp, Session_ID, App_Name, ARK_Unit, ARK_URL, Error_Type, Error_Msg, Traceback]
+                    log_to_gsheets("error_logs", [APP_NAME, ark_part1, raw_input, type(e).__name__, err_msg, tb_str])
                     
                     if "429" in err_msg or "quota" in err_msg.lower():
                         st.warning("⚠️ **Rate Limit Reached:** API quota hit. Wait a moment or use your own key.")
@@ -554,6 +560,6 @@ if final_api_key:
         except Exception as e:
             st.error(f"Error fetching record: {e}")
             # --- TRIGGER 2: Tab 2 (error_logs) for Fetch/Metadata Errors ---
-            log_to_gsheets("error_logs", [APP_NAME, raw_input, "Fetch/Metadata Error", str(e), traceback.format_exc()])
+            log_to_gsheets("error_logs", [APP_NAME, ark_part1, raw_input, "Fetch/Metadata Error", str(e), traceback.format_exc()])
 else:
     st.error("🔑 API Key missing. Provide a key in the sidebar or check Secrets.")
