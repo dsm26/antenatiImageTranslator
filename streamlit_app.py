@@ -13,12 +13,58 @@ import traceback
 
 # --- CONFIGURATION ---
 APP_NAME = "Antenati Downloader & AI Translator"
-CHOSEN_MODEL = 'gemini-3.1-flash-lite-preview'
-CACHE_TTL = 900
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     "Referer": "https://antenati.cultura.gov.it/",
 }
+
+CACHE_TTL = 900
+
+# --- AI PROMPT CONFIGURATION ---
+CHOSEN_MODEL = 'gemini-3.1-flash-lite-preview'
+DEFAULT_PROMPT = """
+    ARCHIVAL CONTEXT: {metadata_context}
+    
+    TASK: Analyze this Italian genealogical image. It may be a Singular Record (Birth, Marriage, Death), a Census (Censimento) page, or an Index (Indice) page.
+    
+    1. CATEGORIZE: Is this a 'Singular Record' or a 'List/Table' (Census or Index)?
+    
+    2. IF SINGULAR RECORD: 
+       - Identify Record Type (e.g., Birth, Marriage, Death, Processetti, Allegati, Parish/Latin record), Primary Subject Name, Date of Event, Father, Mother (including maiden name), Town, Occupation, and Address.
+       - Extract ages of people mentioned
+       - Extract any mentioned Occupation(s) for the parents or subject.
+       - Extract any specific Street Address, House Number, or Parish Name mentioned.
+    
+    3. IF LIST/TABLE (CENSUS OR INDEX): 
+       - Identify the document type (e.g., Census 1881, Marriage Index 1850).
+       - Extract all entries into a structured list. For Census: include Name, Age/Year, Relation to Head, and Occupation. For Indexes: include Name, Parents, Record Number, and Year.
+    
+    4. TRANSCRIPTION: Provide a full transcription of names and marginalia.
+       - Provide the original reading of the Italian or Latin transcription
+       - Provide the full english translation
+    
+    5. SUMMARY: Provide an English Summary of findings.
+    
+    IMPORTANT: After your summary, provide a single line starting with "RAW_DATA: " followed by a JSON block.
+    
+    FOR SINGULAR RECORDS:
+    RAW_DATA: {{"format": "individual", "type": "...", "subject": "...", "date": "...", "father": "...", "mother": "...", "town": "...", "occupation": "...", "address": "...", "notes": "..."}}
+    
+    FOR LISTS/TABLES (CENSUS/INDEX):
+    RAW_DATA: {{"format": "list", "type": "...", "columns": ["Name", "Detail 1", "Detail 2"], "rows": [["Name 1", "Val 1", "Val 2"], ["Name 2", "Val 3", "Val 4"]]}}
+    """
+
+# --- GIT METADATA HELPER ---
+def get_git_info():
+    try:
+        # Get short hash
+        sha = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
+        # Get commit date
+        commit_date = subprocess.check_output(['git', 'log', '-1', '--format=%cd', '--date=format:%Y-%m-%d %H:%M']).decode('ascii').strip()
+        return f"Build: {sha} | {commit_date}"
+    except:
+        # Fallback if git is not initialized or available (e.g., in some cloud environments)
+        return f"Last Refreshed: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
 
 # --- GOOGLE ANALYTICS TRACKING ---
 def track_ga_event(event_name, extra_params=None):
@@ -71,39 +117,6 @@ def log_to_gsheets(sheet_name, row_data):
         requests.post(script_url, json=payload, timeout=5)
     except:
         pass
-
-# --- AI PROMPT CONFIGURATION ---
-DEFAULT_PROMPT = """
-    ARCHIVAL CONTEXT: {metadata_context}
-    
-    TASK: Analyze this Italian genealogical image. It may be a Singular Record (Birth, Marriage, Death), a Census (Censimento) page, or an Index (Indice) page.
-    
-    1. CATEGORIZE: Is this a 'Singular Record' or a 'List/Table' (Census or Index)?
-    
-    2. IF SINGULAR RECORD: 
-       - Identify Record Type (e.g., Birth, Marriage, Death, Processetti, Allegati, Parish/Latin record), Primary Subject Name, Date of Event, Father, Mother (including maiden name), Town, Occupation, and Address.
-       - Extract ages of people mentioned
-       - Extract any mentioned Occupation(s) for the parents or subject.
-       - Extract any specific Street Address, House Number, or Parish Name mentioned.
-    
-    3. IF LIST/TABLE (CENSUS OR INDEX): 
-       - Identify the document type (e.g., Census 1881, Marriage Index 1850).
-       - Extract all entries into a structured list. For Census: include Name, Age/Year, Relation to Head, and Occupation. For Indexes: include Name, Parents, Record Number, and Year.
-    
-    4. TRANSCRIPTION: Provide a full transcription of names and marginalia.
-       - Provide the original reading of the Italian or Latin transcription
-       - Provide the full english translation
-    
-    5. SUMMARY: Provide an English Summary of findings.
-    
-    IMPORTANT: After your summary, provide a single line starting with "RAW_DATA: " followed by a JSON block.
-    
-    FOR SINGULAR RECORDS:
-    RAW_DATA: {{"format": "individual", "type": "...", "subject": "...", "date": "...", "father": "...", "mother": "...", "town": "...", "occupation": "...", "address": "...", "notes": "..."}}
-    
-    FOR LISTS/TABLES (CENSUS/INDEX):
-    RAW_DATA: {{"format": "list", "type": "...", "columns": ["Name", "Detail 1", "Detail 2"], "rows": [["Name 1", "Val 1", "Val 2"], ["Name 2", "Val 3", "Val 4"]]}}
-    """
 
 st.set_page_config(page_title=APP_NAME, page_icon="🏛️", layout="wide")
 
@@ -272,18 +285,6 @@ def extract_raw_data(ai_text):
         return None
     return None
 
-# --- GIT METADATA HELPER ---
-def get_git_info():
-    try:
-        # Get short hash
-        sha = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
-        # Get commit date
-        commit_date = subprocess.check_output(['git', 'log', '-1', '--format=%cd', '--date=format:%Y-%m-%d %H:%M']).decode('ascii').strip()
-        return f"Build: {sha} | {commit_date}"
-    except:
-        # Fallback if git is not initialized or available (e.g., in some cloud environments)
-        return f"Last Refreshed: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("⚙️ App Management")
@@ -395,6 +396,7 @@ if final_api_key:
     ark_match = re.search(r'ark:/12657/(an_ua\d+)/([^/?#]+)', raw_input)
     ark_part1 = ark_match.group(1) if ark_match else ""
     input_id = raw_input.strip().split('/')[-1] if "/" in raw_input else raw_input.strip()
+    input_id = input_id.split("?")[0]
     
     if input_id:
         if raw_input not in st.session_state.history:
