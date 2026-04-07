@@ -13,6 +13,8 @@ import traceback
 
 # --- CONFIGURATION ---
 APP_NAME = "Antenati Downloader & AI Translator"
+APP_ICON = "🏛️"
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     "Referer": "https://antenati.cultura.gov.it/",
@@ -148,7 +150,7 @@ def get_canvas_id_url(url):
         pass
     return None
 
-st.set_page_config(page_title=APP_NAME, page_icon="🏛️", layout="wide")
+st.set_page_config(page_title=APP_NAME, page_icon=APP_ICON, layout="wide")
 
 # --- INITIAL PAGE LOAD TRACKING ---
 if "page_loaded" not in st.session_state:
@@ -379,7 +381,7 @@ with st.sidebar:
     st.caption(get_git_info())
 
 # --- MAIN UI ---
-st.title(f"🏛️ {APP_NAME}")
+st.title(f"{APP_ICON} {APP_NAME}")
 
 with st.expander("ℹ️ Instructions"):
     st.markdown("""
