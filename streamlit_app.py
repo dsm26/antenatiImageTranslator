@@ -29,7 +29,7 @@ GA_API_SECRET = st.secrets.get("GA_API_SECRET")
 CACHE_TTL = 900
 
 # --- AI PROMPT CONFIGURATION ---
-CHOSEN_MODEL = 'gemini-3.1-flash-lite-preview'
+DEFAULT_AI_MODEL = 'gemini-3.1-flash-lite-preview'
 
 def load_prompt():
     """Reads the prompt from prompt.txt and handles fallback."""
@@ -40,6 +40,16 @@ def load_prompt():
         return "Error: AI prompt.txt file not found"
 
 DEFAULT_PROMPT = load_prompt()
+
+def load_models():
+    """Reads the list of models from models.txt."""
+    try:
+        with open("models.txt", "r", encoding="utf-8") as f:
+            return [line.strip() for line in f if line.strip()]
+    except FileNotFoundError:
+        return [DEFAULT_AI_MODEL]
+
+AVAILABLE_MODELS = load_models()
 
 # --- GIT METADATA HELPER ---
 def get_git_info():
@@ -471,12 +481,7 @@ if final_api_key:
             with model_col:
                 selected_model_name = st.selectbox(
                     f"AI Model {key_suffix}:",
-                    options=[
-                        "gemini-3.1-flash-lite-preview",
-                        "gemini-2.5-flash",
-                        "gemini-2.5-flash-lite",
-                        "gemini-3.1-flash-lite"
-                        ], 
+                    options=AVAILABLE_MODELS,
                     index=0
                 )
 
