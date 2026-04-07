@@ -5,11 +5,11 @@ import re
 import json
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
-import google.generativeai as genai
 import subprocess
 from datetime import datetime
 import uuid
 import traceback
+import google.generativeai as genai
 
 # --- CONFIGURATION ---
 APP_NAME = "Antenati Downloader & AI Translator"
@@ -17,9 +17,15 @@ APP_ICON = "🏛️"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    "Referer": "https://antenati.cultura.gov.it/",
+    "Referer": "https://antenati.cultura.gov.it/"
 }
 
+# --- GOOGLE ANALYTICS VIA SECRETS ---
+# These pull from .streamlit/secrets.toml or Streamlit Cloud Secrets
+GA_MEASUREMENT_ID = st.secrets.get("GA_MEASUREMENT_ID")
+GA_API_SECRET = st.secrets.get("GA_API_SECRET")
+
+# Cache control
 CACHE_TTL = 900
 
 # --- AI PROMPT CONFIGURATION ---
@@ -44,15 +50,14 @@ def get_git_info():
         commit_date = subprocess.check_output(['git', 'log', '-1', '--format=%cd', '--date=format:%Y-%m-%d %H:%M']).decode('ascii').strip()
         return f"Build: {sha} | {commit_date}"
     except:
-        # Fallback if git is not initialized or available (e.g., in some cloud environments)
+        # Fallback if git is not available
         return f"Last Refreshed: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
 
 # --- GOOGLE ANALYTICS TRACKING ---
 def track_ga_event(event_name, extra_params=None):
+    """Sends a server-side event to GA4 using Streamlit Secrets."""
     try:
-        api_secret = st.secrets.get("GA_API_SECRET")
-        measurement_id = st.secrets.get("GA_MEASUREMENT_ID")
-        if not api_secret or not measurement_id:
+        if not GA_API_SECRET or not GA_MEASUREMENT_ID:
             return
 
         # Get real user IP from Streamlit Cloud proxy headers for location
@@ -62,7 +67,7 @@ def track_ga_event(event_name, extra_params=None):
         if "ga_client_id" not in st.session_state:
             st.session_state.ga_client_id = str(uuid.uuid4())
 
-        url = f"https://www.google-analytics.com/mp/collect?measurement_id={measurement_id}&api_secret={api_secret}"
+        url = f"https://www.google-analytics.com/mp/collect?measurement_id={GA_MEASUREMENT_ID}&api_secret={GA_API_SECRET}"
         
         payload = {
             "client_id": st.session_state.ga_client_id,
