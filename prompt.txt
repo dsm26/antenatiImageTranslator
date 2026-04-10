@@ -14,11 +14,14 @@ TASK: Analyze this Italian genealogical image. It may be a Singular Record (Birt
    - Identify the document type (e.g., Census 1881, Marriage Index 1850).
    - Extract all entries into a structured list. For Census: include Name, Age/Year, Relation to Head, and Occupation. For Indexes: include Name, Parents, Record Number, and Year.
 
-4. TRANSCRIPTION: Provide a full transcription of names and marginalia.
+4. SUMMARY: Provide an English Summary of findings.
+
+5. TRANSCRIPTION: Provide a full transcription of names and marginalia.
    - Provide the original reading of the Italian or Latin transcription
    - Provide the full english translation
-
-5. SUMMARY: Provide an English Summary of findings.
+4. TRANSCRIPTION & TRANSLATION:
+   - ITALIAN/LATIN: Provide a complete, word-for-word transcription of the entire record, including all boilerplate printed text, handwritten entries, and marginalia. Do not summarize or use excerpts.
+   - ENGLISH: Provide a full, line-by-line English translation corresponding to the transcription above. Maintain the original flow of the document so no details are lost.
 
 IMPORTANT: After your summary, provide a single line starting with "RAW_DATA: " followed by a JSON block.
 
