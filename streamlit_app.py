@@ -430,7 +430,7 @@ if final_api_key:
     
     if input_id:
 
-        st.info(f"Processing ID: {image_id}...")
+        st.info(f"Processing ID: {input_id}...")
 
         if original_input not in st.session_state.history:
             st.session_state.history.append(original_input)
