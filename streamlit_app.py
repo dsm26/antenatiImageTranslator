@@ -10,8 +10,10 @@ from datetime import datetime
 import uuid
 import traceback
 import google.generativeai as genai
-from feedback import show_feedback_form
+from git_utils import get_git_info
+from api_helpers import track_ga_event, log_to_gsheets
 from input_validator import validate_antenati_url
+from feedback import show_feedback_form
 
 # --- CONFIGURATION ---
 APP_NAME = "Antenati Downloader & AI Translator"
@@ -52,69 +54,6 @@ def load_models():
         return [DEFAULT_AI_MODEL]
 
 AVAILABLE_MODELS = load_models()
-
-# --- GIT METADATA HELPER ---
-def get_git_info():
-    try:
-        # Get short hash
-        sha = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
-        # Get commit date
-        commit_date = subprocess.check_output(['git', 'log', '-1', '--format=%cd', '--date=format:%Y-%m-%d %H:%M']).decode('ascii').strip()
-        return f"Build: {sha} | {commit_date}"
-    except:
-        # Fallback if git is not available
-        return f"Last Refreshed: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-
-# --- GOOGLE ANALYTICS TRACKING ---
-def track_ga_event(event_name, extra_params=None):
-    """Sends a server-side event to GA4 using Streamlit Secrets."""
-    try:
-        if not GA_API_SECRET or not GA_MEASUREMENT_ID:
-            return
-
-        # Get real user IP from Streamlit Cloud proxy headers for location
-        user_ip = st.context.headers.get("X-Forwarded-For", "0.0.0.0").split(",")[0]
-        user_agent = st.context.headers.get("User-Agent", "Unknown")
-        
-        if "ga_client_id" not in st.session_state:
-            st.session_state.ga_client_id = str(uuid.uuid4())
-
-        url = f"https://www.google-analytics.com/mp/collect?measurement_id={GA_MEASUREMENT_ID}&api_secret={GA_API_SECRET}"
-        
-        payload = {
-            "client_id": st.session_state.ga_client_id,
-            "events": [{
-                "name": event_name,
-                "params": {
-                    "ip_override": user_ip,
-                    "user_agent": user_agent,
-                    "engagement_time_msec": "1",
-                    **(extra_params or {})
-                }
-            }]
-        }
-        requests.post(url, data=json.dumps(payload), timeout=2)
-    except:
-        pass
-
-# --- REFACTORED LOGGING FUNCTION ---
-def log_to_gsheets(sheet_name, row_data):
-    """Targeted logging for usage, error, and ai tabs."""
-    script_url = st.secrets.get("GSHEET_WEBAPP_URL")
-    if not script_url:
-        return
-
-    client_id = st.session_state.get("ga_client_id", "unknown_session")
-    
-    payload = {
-        "sheetName": sheet_name,
-        "rowData": [datetime.now().strftime('%Y-%m-%d %H:%M:%S'), client_id] + row_data
-    }
-    
-    try:
-        requests.post(script_url, json=payload, timeout=5)
-    except:
-        pass
 
 def get_canvas_id_url(url):
     """Parses the Antenati HTML to extract the hidden canvasId URL."""
