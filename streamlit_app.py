@@ -11,6 +11,7 @@ import uuid
 import traceback
 import google.generativeai as genai
 from feedback import show_feedback_form
+from input_validator import validate_antenati_url
 
 # --- CONFIGURATION ---
 APP_NAME = "Antenati Downloader & AI Translator"
@@ -419,30 +420,18 @@ if final_api_key:
     
     raw_input = st.text_input("Paste Antenati URL (preferred) or Image ID:", value=initial_value)
 
-    # --- an_ud INTERCEPTOR & ID EXTRACTION ---
-    original_input = raw_input.strip()
-    processing_url = original_input
-
-    if processing_url:
-        if "/an_ud" in processing_url:
-            with st.spinner("🔍 Document unit detected. Finding specific record link..."):
-                redirected = get_canvas_id_url(processing_url)
-                if redirected:
-                    processing_url = redirected
-            
-            if processing_url != original_input:
-                st.info(f"**Note:** Using link `{processing_url}`. Links with an_ud in them are not directly downloadable.")
+    # --- URL VALIDATION & ID EXTRACTION ---
+    input_id, ark_part1, original_input, processing_url = validate_antenati_url(
+        raw_input, id_param, get_canvas_id_url, APP_NAME
+    )
 
     # Update raw_input for the rest of the logic to use the resolved URL
     raw_input = processing_url
     
-    # --- URL VALIDATION ---
-    ark_match = re.search(r'ark:/12657/(an_ua\d+)/([^/?#]+)', raw_input)
-    ark_part1 = ark_match.group(1) if ark_match else ""
-    input_id = raw_input.strip().split('/')[-1] if "/" in raw_input else raw_input.strip()
-    input_id = input_id.split("?")[0]
-    
     if input_id:
+
+        st.info(f"Processing ID: {image_id}...")
+
         if original_input not in st.session_state.history:
             st.session_state.history.append(original_input)
 
