@@ -10,6 +10,7 @@ from datetime import datetime
 import uuid
 import traceback
 import google.generativeai as genai
+from feedback import show_feedback_form
 
 # --- CONFIGURATION ---
 APP_NAME = "Antenati Downloader & AI Translator"
@@ -607,3 +608,6 @@ if final_api_key:
             log_to_gsheets("error_logs", [APP_NAME, ark_part1, raw_input, "Fetch/Metadata Error", str(e), traceback.format_exc()])
 else:
     st.error("🔑 API Key missing. Provide a key in the sidebar or check Secrets.")
+
+# --- FINAL UI ELEMENTS ---
+show_feedback_form(APP_NAME, HEADERS)
