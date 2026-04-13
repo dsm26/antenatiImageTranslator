@@ -15,7 +15,7 @@ from api_helpers import track_ga_event, log_to_gsheets
 from input_validator import validate_antenati_url
 from feedback import show_feedback_form
 from instructions import show_instructions
-from sidebar import show_sidebar  # <--- New Import
+from sidebar import show_sidebar
 
 # --- CONFIGURATION ---
 APP_NAME = "Antenati Downloader & AI Translator"
