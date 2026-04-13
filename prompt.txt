@@ -37,7 +37,7 @@ IMPORTANT: After your summary and translation, provide a single line starting wi
 
 FOR SINGULAR RECORDS:
 RAW_DATA:
-{
+{{
     "format": "individual",
     "type": "...",
     "subject": "...",
@@ -52,11 +52,11 @@ RAW_DATA:
     "address": "Street/House number",
     "analysis_notes": "Notes on handwriting difficulty, language, or name variations",
     "notes": "Marginalia or supplemental details"
-}
+}}
 
 FOR LISTS/TABLES (CENSUS/INDEX):
 RAW_DATA:
-{
+{{
     "format": "list",
     "type": "...",
     "columns": ["Name [Alternatives]", "Detail 1", "Detail 2"],
@@ -64,4 +64,4 @@ RAW_DATA:
         ["Name 1 [Alternatives]", "Val 1", "Val 2"],
         ["Name 2 [Alternatives]", "Val 3", "Val 4"]
     ]
-}
+}}
