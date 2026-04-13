@@ -229,12 +229,16 @@ def format_csv_row(data, image_id, source_input):
             image_id,                                # 1
             data.get("type",""),                     # 2
             data.get("subject",""),                  # 3
+            data.get("subject_confidence",""),       # NEW: 3.1
             data.get("date",""),                     # 4
             data.get("father",""),                   # 5
+            data.get("father_confidence",""),        # NEW: 5.1
             data.get("mother",""),                   # 6
+            data.get("mother_confidence",""),        # NEW: 6.1
             data.get("town",""),                     # 7
             data.get("occupation",""),               # 8
             data.get("address",""),                  # 9
+            data.get("analysis_notes",""),           # NEW: 9.1
             data.get("notes","").replace("\n", " "), # 10
             source_url                               # 11
         ]
@@ -390,25 +394,33 @@ if final_api_key:
                                 "1. ID",
                                 "2. Record Type",
                                 "3. Subject",
+                                "3a. Subject Confidence",
                                 "4. Date", 
                                 "5. Father",
+                                "5a. Father Confidence",
                                 "6. Mother",
+                                "6a. Mother Confidence",
                                 "7. Town", 
                                 "8. Occupation",
                                 "9. Address",
-                                "10. Notes",
-                                "11. Source URL"
+                                "10. Analysis Notes",
+                                "11. Marginalia/Notes",
+                                "12. Source URL"
                             ],
                             "Value": [
                                 input_id,
                                 raw_data.get("type"),
                                 raw_data.get("subject"), 
+                                raw_data.get("subject_confidence"), # NEW
                                 raw_data.get("date"),
                                 raw_data.get("father"),
+                                raw_data.get("father_confidence"),  # NEW
                                 raw_data.get("mother"), 
+                                raw_data.get("mother_confidence"),  # NEW
                                 raw_data.get("town"),
                                 raw_data.get("occupation"),
                                 raw_data.get("address"), 
+                                raw_data.get("analysis_notes"),     # NEW
                                 raw_data.get("notes"),
                                 final_source_url
                             ]
