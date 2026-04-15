@@ -360,6 +360,10 @@ if final_api_key:
                 try:
                     analysis_text = get_ai_analysis(img_data, record_meta, current_model, selected_model_name)
                     
+                    status_area.info(
+                        f"⏳ AI response received for record: {input_id}. Results will appear **below** once completed...\n\n"
+                    )
+
                     # --- TRIGGER 3: Tab 3 (ai_logs) ---
                     # Tab 3: [Timestamp, Session_ID, App_Name, ARK_Unit, ARK_URL, Model_Used, Key_Type]
                     key_type = "Personal" if user_api_key else "Shared"
@@ -374,11 +378,17 @@ if final_api_key:
                     st.write(display_text)
                     
                     if raw_data:
+                        status_area.info(
+                            f"⏳ Processing AI response for record: {input_id}. Results will appear **below** once completed...\n\n"
+                        )
                         st.markdown("---")
                         st.subheader("📊 Research Log Data")
                         final_source_url = raw_input if "http" in raw_input else f"https://antenati.cultura.gov.it/ark:/12657/an_ua/{input_id}"
                         
                         if raw_data.get("format") == "list":
+                            status_area.info(
+                                f"⏳ Processing AI response with multiple entries for record: {input_id}. Results will appear **below** once completed...\n\n"
+                            )
                             # Census/Index Multi-row table
                             cols = raw_data.get("columns", [])
                             rows = raw_data.get("rows", [])
@@ -389,6 +399,9 @@ if final_api_key:
                             
                         else:
                             # Standard Individual Record table
+                            status_area.info(
+                                f"⏳ Processing AI response with single entry on record: {input_id}. Results will appear **below** once completed...\n\n"
+                            )
                             st.table({
                                 "Field": [
                                 "1. ID",
