@@ -9,15 +9,19 @@ Analyze this Italian genealogical image. Determine the record type: Singular Rec
 ### PALEOGRAPHIC & ANALYSIS RULES:
 1. PRIMARY TRANSCRIPTION: Provide the most likely reading of names and locations.
 2. AMBIGUITY: Use brackets for alternatives if a letter/vowel is unclear. Example: "Mancuso [or Mancusa]".
-3. CONFIDENCE: Assign a percentage (0-100%) to the Primary Subject, Father, and Mother.
+3. CONFIDENCE: Assign a percentage (0-100%) to the Primary Subject, Father, and Mother. If a name is explicitly not stated in the record, enter 'Not Stated' and
+assign 100% confidence if you are certain of its absence.
 4. MARGINALIA: Transcribe and translate any marriage or death notations found in the margins.
 5. REGIONAL CONTEXT: Note if a surname appears to be a specific regional variation (e.g., Salerno).
 
 ### STEP-BY-STEP EXECUTION:
 1. CATEGORIZE: Is this a 'Singular Record' or a 'List/Table' (Census or Index)?
 
-2. IF SINGULAR RECORD: 
+2. IF SINGULAR RECORD(S): 
+   - Identify if there is one record or multiple records (e.g., two death entries on one spread).
+   - If there is ONLY ONE record, use the "individual" RAW_DATA format below.
    - Identify Record Type (e.g., Birth, Marriage, Death, Processetti, Allegati, Parish/Latin record), Primary Subject Name, Date of Event, Father, Mother (including maiden name), Town, Occupation, and Address.
+   - If there are MULTIPLE records, use the "list" RAW_DATA format below. Use columns: ["Type", "Subject", "Date", "Parents", "Occupation", "Notes"].
    - Extract ages of people mentioned.
    - Extract any mentioned Occupation(s) for the parents or subject.
    - Extract any specific Street Address, House Number, or Parish Name mentioned.
