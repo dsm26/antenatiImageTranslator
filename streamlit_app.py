@@ -3,6 +3,7 @@ import math
 import requests
 import re
 import json
+import time
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 import subprocess
@@ -222,7 +223,8 @@ def format_csv_row(data, image_id, source_input):
         rows = []
         for r in data.get("rows", []):
             row_data = [image_id, data.get("type"), source_url] + r
-            rows.append(",".join([f'"{str(x)}"' for x in row_data]))
+            row_data_cleaned = [str(x).replace('"', '""') for x in row_data]
+            rows.append(",".join([f'"{x}"' for x in row_data_cleaned]))
         return "\n".join(rows)
     else:
         row = [
@@ -242,7 +244,8 @@ def format_csv_row(data, image_id, source_input):
             data.get("notes","").replace("\n", " "), # 10
             source_url                               # 11
         ]
-        return ",".join([f'"{str(x)}"' for x in row])
+        row_cleaned = [str(x).replace('"', '""') for x in row]
+        return ",".join([f'"{x}"' for x in row_cleaned])
 
 def extract_raw_data(ai_text):
     try:
@@ -358,7 +361,10 @@ if final_api_key:
                 )
                 
                 try:
+                    start_time = time.time()
                     analysis_text = get_ai_analysis(img_data, record_meta, current_model, selected_model_name)
+                    end_time = time.time()
+                    duration = round(end_time - start_time, 2)
                     
                     status_area.info(
                         f"⏳ AI response received for record: {input_id}. Results will appear **below** once completed...\n\n"
@@ -446,7 +452,7 @@ if final_api_key:
                         st.caption("☝️ Use the copy button in the top right to paste into your log.")
                     
                     status_area.success(
-                        f"✅ Analysis complete. [View Findings](#findings)"
+                        f"✅ Analysis complete (Took {duration} seconds). [View Findings](#findings)"
                     )
 
                 except Exception as e:
