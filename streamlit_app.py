@@ -334,7 +334,7 @@ if final_api_key:
                 )
 
             with btn_col:
-                translate_clicked = st.button("Translate with AI", type="primary", use_container_width=True)
+                translate_clicked = st.button("Translate with AI", type="primary", use_container_width=True, help="This extracts the key genealogical information from the record.")
             
             with btn_col2:
                 full_translate_clicked = st.button(
@@ -362,6 +362,10 @@ if final_api_key:
             active_prompt = DEFAULT_PROMPT if translate_clicked else FULL_TEXT_PROMPT
             active_prompt_file = "prompt.txt" if translate_clicked else "prompt_full.txt"
 
+            # These labels will drive the UI text
+            task_label = "extracted information" if translate_clicked else "full text translation"
+            view_label = "View extracted information" if translate_clicked else "View full text translation"
+
             if trigger_ai:
                 track_ga_event("ai_translation_started", {"model": selected_model_name, "prompt_file": active_prompt_file})
                 if user_api_key:
@@ -369,7 +373,7 @@ if final_api_key:
                 
                 current_model = genai.GenerativeModel(selected_model_name)
                 status_area.info(
-                    f"⏳ AI is analyzing record: {input_id}. Results will appear **below** once completed...\n\n"
+                    f"⏳ AI is analyzing record: {input_id}. The {task_label} will appear **below** once completed...\n\n"
                     f"By default, this page uses a shared account with a daily rate limit. "
                     f"If you plan to perform many translations, please use your own key in the sidebar."
                 )
@@ -465,7 +469,7 @@ if final_api_key:
                         st.caption("☝️ Use the copy button in the top right to paste into your log.")
                     
                     status_area.success(
-                        f"✅ Analysis complete (Took {duration} seconds). [View Findings](#findings)"
+                        f"✅ Analysis complete (Took {duration} seconds). [{view_label}](#findings)"
                     )
 
                 except Exception as e:
