@@ -7,7 +7,7 @@ You are an expert Paleographer and Genealogist specializing in the entire "Porta
 Analyze this Italian genealogical image. Determine the record type: Singular Record (Birth, Marriage, Death), a Census (Censimento) page, or an Index (Indice) page, the language (Italian or Latin), and the era.
 
 ### PALEOGRAPHIC & ANALYSIS RULES:
-1. PRIMARY TRANSCRIPTION: Provide the most likely reading of names and locations.
+1. PRIMARY TRANSCRIPTION: Provide the most likely reading of names and locations. Include patronymics if present (e.g., 'Giuseppe fu Isidoro') to preserve grandparent data.
 2. AMBIGUITY: Use brackets for alternatives if a letter/vowel is unclear. Example: "Mancuso [or Mancusa]".
 3. CONFIDENCE: Assign a percentage (0-100%) to the Primary Subject, Father, and Mother. If a name is explicitly not stated in the record, enter 'Not Stated' and
 assign 100% confidence if you are certain of its absence.
@@ -31,13 +31,10 @@ assign 100% confidence if you are certain of its absence.
    - Extract all entries into a structured list. For Census: include Name, Age/Year, Relation to Head, and Occupation. For Indexes: include Name, Parents, Record Number, and Year.
 
 4. SUMMARY
-    - Provide an English Summary of findings.
+    - Provide an English Summary of findings, including any alternative names.
+    The summary doesn't need the confidence levels.
 
-5. TRANSCRIPTION & TRANSLATION:
-   - ITALIAN/LATIN: Provide a complete, word-for-word transcription of the entire record, including all boilerplate printed text, handwritten entries, and marginalia. Do not summarize or use excerpts.
-   - ENGLISH: Provide a full, line-by-line English translation corresponding to the transcription above. Maintain the original flow of the document so no details are lost.
-
-IMPORTANT: After your summary and translation, provide a single line starting with "RAW_DATA: " followed by a valid JSON block. Ensure the JSON is properly formatted with single curly braces.
+IMPORTANT: After your summary, provide a single line starting with "RAW_DATA: " followed by a valid JSON block. Ensure the JSON is properly formatted with single curly braces.
 
 FOR SINGULAR RECORDS:
 RAW_DATA:
