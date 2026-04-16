@@ -33,15 +33,16 @@ CACHE_TTL = 900
 # --- AI PROMPT CONFIGURATION ---
 DEFAULT_AI_MODEL = 'gemini-3.1-flash-lite-preview'
 
-def load_prompt():
-    """Reads the prompt from prompt.txt and handles fallback."""
+def load_prompt(filename="prompt.txt"):
+    """Reads the prompt from a file and handles fallback."""
     try:
-        with open("prompt.txt", "r", encoding="utf-8") as f:
+        with open(filename, "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        return "Error: AI prompt.txt file not found"
+        return f"Error: AI {filename} file not found"
 
-DEFAULT_PROMPT = load_prompt()
+DEFAULT_PROMPT = load_prompt("prompt.txt")
+FULL_TEXT_PROMPT = load_prompt("prompt_full_text.txt")
 
 def load_models():
     """Reads the list of models from models.txt."""
@@ -207,9 +208,9 @@ def get_stitched_image(cache_key, image_id, source_input, ark_unit=""):
 
 # --- AI ANALYSIS ---
 @st.cache_data(show_spinner=False, ttl=CACHE_TTL)
-def get_ai_analysis(img_bytes, metadata_context, _model_instance, model_name):
+def get_ai_analysis(img_bytes, metadata_context, _model_instance, model_name, prompt_text):
     # Using the prompt variable formatted with context
-    prompt = DEFAULT_PROMPT.format(metadata_context=metadata_context)
+    prompt = prompt_text.format(metadata_context=metadata_context)
 
     response = _model_instance.generate_content([prompt, {"mime_type": "image/jpeg", "data": img_bytes}])
     return response.text
@@ -320,9 +321,9 @@ if final_api_key:
             # Determine descriptive filename
             save_name = f"{ark_part1}_{input_id}.jpg" if ark_part1 else f"{input_id}.jpg"
 
-            # --- AI MODEL SELECTOR & STATUS (NOW ABOVE IMAGE) ---
+            # --- AI MODEL SELECTOR & STATUS ---
             st.markdown("---")
-            model_col, btn_col, spacer = st.columns([4, 2, 4], vertical_alignment="bottom")
+            model_col, btn_col, btn_col2, spacer = st.columns([4, 2, 2, 2], vertical_alignment="bottom")
 
             key_suffix = "(using personal Gemini key)" if user_api_key else "(using default Gemini key)"
             with model_col:
@@ -334,6 +335,14 @@ if final_api_key:
 
             with btn_col:
                 translate_clicked = st.button("Translate with AI", type="primary", use_container_width=True)
+            
+            with btn_col2:
+                full_translate_clicked = st.button(
+                    "Translate Full Text",
+                    type="secondary",
+                    use_container_width=True,
+                    help="This tries to translate the entire document word-for-word."
+                )
 
             # Move status area here so it appears above the image
             status_area = st.empty()
@@ -348,8 +357,13 @@ if final_api_key:
             st.image(img_data, use_container_width=True)
             st.info(f"📍 **Archival Context:** {record_meta}")
 
-            if translate_clicked:
-                track_ga_event("ai_translation_started", {"model": selected_model_name})
+            # AI Execution Logic
+            trigger_ai = translate_clicked or full_translate_clicked
+            active_prompt = DEFAULT_PROMPT if translate_clicked else FULL_TEXT_PROMPT
+            active_prompt_file = "prompt.txt" if translate_clicked else "prompt_full.txt"
+
+            if trigger_ai:
+                track_ga_event("ai_translation_started", {"model": selected_model_name, "prompt_file": active_prompt_file})
                 if user_api_key:
                     track_ga_event("personal_key_used_for_translation")
                 
@@ -362,7 +376,7 @@ if final_api_key:
                 
                 try:
                     start_time = time.time()
-                    analysis_text = get_ai_analysis(img_data, record_meta, current_model, selected_model_name)
+                    analysis_text = get_ai_analysis(img_data, record_meta, current_model, selected_model_name, active_prompt)
                     end_time = time.time()
                     duration = round(end_time - start_time, 2)
                     
@@ -371,9 +385,8 @@ if final_api_key:
                     )
 
                     # --- TRIGGER 3: Tab 3 (ai_logs) ---
-                    # Tab 3: [Timestamp, Session_ID, App_Name, ARK_Unit, ARK_URL, Model_Used, Key_Type]
                     key_type = "Personal" if user_api_key else "Shared"
-                    log_to_gsheets("ai_logs", [APP_NAME, ark_part1, raw_input, selected_model_name, key_type, duration])
+                    log_to_gsheets("ai_logs", [APP_NAME, ark_part1, raw_input, selected_model_name, key_type, duration, active_prompt_file])
 
                     display_text = analysis_text.split("RAW_DATA:")[0].strip()
                     raw_data = extract_raw_data(analysis_text)
