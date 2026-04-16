@@ -334,14 +334,14 @@ if final_api_key:
                 )
 
             with btn_col:
-                translate_clicked = st.button("Translate with AI", type="primary", use_container_width=True, help="This extracts the key genealogical information from the record.")
+                translate_clicked = st.button("Translate with AI", type="primary", use_container_width=True, help="Extracts the key genealogical information from the record.")
             
             with btn_col2:
                 full_translate_clicked = st.button(
                     "Translate Full Text",
                     type="secondary",
                     use_container_width=True,
-                    help="This tries to translate the entire document word-for-word."
+                    help="Tries to translate the entire document word-for-word."
                 )
 
             # Move status area here so it appears above the image
