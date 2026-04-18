@@ -1,4 +1,6 @@
 import streamlit as st
+import requests
+from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 from api_helpers import track_ga_event, log_to_gsheets
 
@@ -20,8 +22,25 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name):
             """)
             return "", "", original_input, processing_url
 
+        # --- detail-nominative INTERCEPTOR (Must happen before stripping query parameters) ---
+        if "detail-nominative" in processing_url:
+            with st.spinner("🔍 Person index detected. Extracting record link from page..."):
+                try:
+                    response = requests.get(processing_url, timeout=10)
+                    if response.status_code == 200:
+                        soup = BeautifulSoup(response.text, 'html.parser')
+                        # Look for links containing the ARK prefix
+                        ark_link = soup.find('a', href=lambda x: x and '/ark:/12657/an_ud' in x)
+                        if ark_link:
+                            # Reconstruct full URL (Antenati links are often relative)
+                            found_path = ark_link['href']
+                            processing_url = f"https://antenati.cultura.gov.it{found_path}"
+                            st.info(f"📍 Found record: **{ark_link.get_text(strip=True)}**")
+                except Exception as e:
+                    st.error(f"Could not parse the nominative page: {e}")
+
         # --- STRIP QUERY PARAMETERS ---
-        if "?" in processing_url:
+        if "?" in processing_url and "detail-nominative" not in processing_url:
             processing_url = processing_url.split("?")[0]
 
         # --- an_ud INTERCEPTOR ---
@@ -33,7 +52,7 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name):
             
             # Notify user of URL switching
             if processing_url != original_input:
-                st.info(f"**Note:** Using link: `{processing_url}`. Links with an_ud in them are not directly downloadable.")
+                st.info(f"**Note:** Using link: `{processing_url}`. Links with an_ud or detail-nominative in them are not directly downloadable.")
 
         # Ensure URL has a scheme for parsing
         parse_url = processing_url
@@ -56,7 +75,7 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name):
                 ark_path = f"{ark_unit}/{image_id}"
                 track_ga_event("record_path_logged", {"ark_path": ark_path})
 
-        elif "beniculturali.it" in processing_url or "dam-antenati" in processing_url:
+        elif any(domain in processing_url for domain in ["beniculturali.it", "dam-antenati"]):
             # Handle IIIF and Manifest patterns
             path_parts = urlparse(parse_url).path.rstrip('/').split('/')
             if '2' in path_parts: # Typical for /iiif/2/ID/...
@@ -65,6 +84,8 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name):
                 image_id = path_parts[path_parts.index('containers') + 1]
             else:
                 image_id = path_parts[-1]
+
+            ark_unit = "IIIF_EXTRACT" # Placeholder to avoid empty unit errors
 
         # "Hidden" feature: Check if it's just a raw ID (no slashes, no dots)
         elif "/" not in processing_url and "." not in processing_url and len(processing_url) > 0:
