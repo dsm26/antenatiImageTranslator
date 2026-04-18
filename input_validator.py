@@ -22,41 +22,51 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name):
             """)
             return "", "", original_input, processing_url
 
-        # --- detail-nominative INTERCEPTOR (Must happen before stripping query parameters) ---
-        if "detail-nominative" in processing_url:
-            with st.spinner("🔍 Person index detected. Extracting record link from page..."):
-                try:
-                    response = requests.get(processing_url, timeout=10)
-                    if response.status_code == 200:
-                        soup = BeautifulSoup(response.text, 'html.parser')
-                        # Look for links containing the ARK prefix
-                        ark_link = soup.find('a', href=lambda x: x and '/ark:/12657/an_ud' in x)
-                        if ark_link:
-                            # Reconstruct full URL (Antenati links are often relative)
-                            found_path = ark_link['href']
-                            processing_url = f"https://antenati.cultura.gov.it{found_path}"
-                            st.info(f"📍 Found record: **{ark_link.get_text(strip=True)}**")
-                except Exception as e:
-                    st.error(f"Could not parse the nominative page: {e}")
-
-        # --- STRIP QUERY PARAMETERS (Repeated after transformations to keep inputs clean) ---
-        if "?" in processing_url and "detail-nominative" not in processing_url:
-            processing_url = processing_url.split("?")[0]
-
-        # --- an_ud INTERCEPTOR ---
-        if "/an_ud" in processing_url:
-            with st.spinner("🔍 Document unit detected. Finding specific record link..."):
-                redirected = get_canvas_id_url(processing_url)
-                if redirected:
-                    processing_url = redirected
+        # --- RESOLUTION LOOP ---
+        # We loop to allow the URL to evolve (Nominative -> an_ud -> an_ua)
+        max_resolutions = 3
+        for _ in range(max_resolutions):
+            current_before_resolve = processing_url
             
-            # Re-strip in case the redirected URL contains new query parameters
-            if "?" in processing_url:
+            # --- detail-nominative INTERCEPTOR (Must happen before stripping query parameters) ---
+            if "detail-nominative" in processing_url:
+                with st.spinner("🔍 Person index detected. Extracting record link from page..."):
+                    try:
+                        response = requests.get(processing_url, timeout=10)
+                        if response.status_code == 200:
+                            soup = BeautifulSoup(response.text, 'html.parser')
+                        # Look for links containing the ARK prefix
+                            ark_link = soup.find('a', href=lambda x: x and '/ark:/12657/an_ud' in x)
+                            if ark_link:
+                            # Reconstruct full URL (Antenati links are often relative)
+                                found_path = ark_link['href']
+                                processing_url = f"https://antenati.cultura.gov.it{found_path}"
+                                st.info(f"📍 Found record: **{ark_link.get_text(strip=True)}**")
+                    except Exception as e:
+                        st.error(f"Could not parse the nominative page: {e}")
+
+            # --- STRIP QUERY PARAMETERS (Repeated after transformations to keep inputs clean) ---
+            if "?" in processing_url and "detail-nominative" not in processing_url:
                 processing_url = processing_url.split("?")[0]
 
-            # Notify user of URL switching
-            if processing_url != original_input:
-                st.info(f"**Note:** Using link: `{processing_url}`. Links with an_ud or detail-nominative in them are not directly downloadable.")
+            # --- an_ud INTERCEPTOR ---
+            if "/an_ud" in processing_url:
+                with st.spinner("🔍 Document unit detected. Finding specific record link..."):
+                    redirected = get_canvas_id_url(processing_url)
+                    if redirected:
+                        processing_url = redirected
+                
+                # Re-strip in case the redirected URL contains new query parameters
+                if "?" in processing_url:
+                    processing_url = processing_url.split("?")[0]
+
+            # If the URL didn't change this round, we've reached the final form
+            if processing_url == current_before_resolve:
+                break
+
+        # Notify user of final URL result if it changed
+        if processing_url != original_input:
+            st.info(f"**Note:** Using link: `{processing_url}`. Links with an_ud or detail-nominative in them are not directly downloadable.")
 
         # Ensure URL has a scheme for parsing
         parse_url = processing_url
@@ -95,11 +105,11 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name):
         elif "/" not in processing_url and "." not in processing_url and len(processing_url) > 0:
             image_id = processing_url
         else:
-        # --- 3. INVALID VALUE TRACKING ---
+            # --- 3. INVALID VALUE TRACKING ---
             track_ga_event("invalid_input_error", {"input_value": processing_url[:50]})
-            
+
             log_to_gsheets("error_logs", [app_name, "N/A", original_input, "User Input Error", "Invalid URL format"])
-            
+
             st.error("""
             **Invalid URL format.** Please use a valid Antenati ARK URL.
 
