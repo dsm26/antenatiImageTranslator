@@ -100,8 +100,10 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name):
             
             log_to_gsheets("error_logs", [app_name, "N/A", original_input, "User Input Error", "Invalid URL format"])
             
-            st.error("""
+            st.error(f"""
             **Invalid URL format.** Please use a valid Antenati ARK URL.
+
+            **Current processed URL:** `{processing_url}`
 
             **How to find it:**
             On the Antenati portal, click the **'Copia link del bookmark'** button to get the correct link.
