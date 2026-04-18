@@ -3,6 +3,36 @@ from git_utils import get_git_info
 from api_helpers import track_ga_event
 from update_history import update_history
 
+def extract_display_id(url_string):
+    """
+    Parses a URL or path to find the most meaningful ID for display.
+    Handles standard ARK, IIIF, Manifest, and Google Drive patterns.
+    """
+    h_id = url_string.strip()
+    
+    if "/" in h_id:
+        # Standardize by removing scheme and trailing slashes
+        path = h_id.replace("https://", "").replace("http://", "").rstrip('/')
+        parts = path.split('/')
+        
+        # Handle IIIF /2/ID/ patterns
+        if '2' in parts and parts.index('2') < len(parts) - 1:
+            return parts[parts.index('2') + 1]
+        
+        # Handle /containers/ID/ patterns
+        elif 'containers' in parts and parts.index('containers') < len(parts) - 1:
+            return parts[parts.index('containers') + 1]
+        
+        # Handle Google Drive /d/ID/ patterns
+        elif 'd' in parts and parts.index('d') < len(parts) - 1:
+            return parts[parts.index('d') + 1]
+            
+        # Default to last segment for standard ARK URLs
+        else:
+            return parts[-1]
+            
+    return h_id
+
 def show_sidebar(CACHE_TTL, AVAILABLE_MODELS, DEFAULT_PROMPT):
     """
     Renders the sidebar and returns the user's personal API key if provided.
@@ -34,7 +64,9 @@ def show_sidebar(CACHE_TTL, AVAILABLE_MODELS, DEFAULT_PROMPT):
             st.header("🕒 Recent History")
             # Use enumerate to ensure unique keys even if IDs are similar
             for i, h_input in enumerate(reversed(st.session_state.history)):
-                h_id = h_input.strip().split('/')[-1] if "/" in h_input else h_input.strip()
+                # Clean up the display ID for the button label
+                h_id = extract_display_id(h_input)
+
                 if st.button(f"📄 {h_id}", key=f"hist_{h_id}_{i}", use_container_width=True):
                     st.query_params["image_id"] = "" 
                     st.query_params["url"] = h_input
