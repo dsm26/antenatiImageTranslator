@@ -1,6 +1,7 @@
 import streamlit as st
 from git_utils import get_git_info
 from api_helpers import track_ga_event
+from update_history import update_history
 
 def show_sidebar(CACHE_TTL, AVAILABLE_MODELS, DEFAULT_PROMPT):
     """
@@ -31,9 +32,10 @@ def show_sidebar(CACHE_TTL, AVAILABLE_MODELS, DEFAULT_PROMPT):
         if st.session_state.history:
             st.markdown("---")
             st.header("🕒 Recent History")
-            for h_input in reversed(st.session_state.history[-5:]):
+            # Use enumerate to ensure unique keys even if IDs are similar
+            for i, h_input in enumerate(reversed(st.session_state.history)):
                 h_id = h_input.strip().split('/')[-1] if "/" in h_input else h_input.strip()
-                if st.button(f"📄 {h_id}", key=f"hist_{h_id}", use_container_width=True):
+                if st.button(f"📄 {h_id}", key=f"hist_{h_id}_{i}", use_container_width=True):
                     st.query_params["image_id"] = "" 
                     st.query_params["url"] = h_input
                     st.rerun()
