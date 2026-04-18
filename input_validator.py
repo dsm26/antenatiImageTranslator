@@ -35,9 +35,14 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name):
             if processing_url != original_input:
                 st.info(f"**Note:** Using link: `{processing_url}`. Links with an_ud in them are not directly downloadable.")
 
+        # Ensure URL has a scheme for parsing
+        parse_url = processing_url
+        if not parse_url.startswith(('http://', 'https://')) and "." in parse_url:
+            parse_url = "https://" + parse_url
+
         # Check if it's a valid official ARK URL
         if "ark:/12657/" in processing_url:
-            parsed_path = urlparse(processing_url).path.rstrip('/')
+            parsed_path = urlparse(parse_url).path.rstrip('/')
             path_parts = parsed_path.split('/')
             image_id = path_parts[-1]
 
@@ -50,6 +55,16 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name):
                 # TRACK FULL RECONSTRUCTED PATH
                 ark_path = f"{ark_unit}/{image_id}"
                 track_ga_event("record_path_logged", {"ark_path": ark_path})
+
+        elif "beniculturali.it" in processing_url or "dam-antenati" in processing_url:
+            # Handle IIIF and Manifest patterns
+            path_parts = urlparse(parse_url).path.rstrip('/').split('/')
+            if '2' in path_parts: # Typical for /iiif/2/ID/...
+                image_id = path_parts[path_parts.index('2') + 1]
+            elif 'containers' in path_parts: # Typical for /containers/ID/manifest
+                image_id = path_parts[path_parts.index('containers') + 1]
+            else:
+                image_id = path_parts[-1]
 
         # "Hidden" feature: Check if it's just a raw ID (no slashes, no dots)
         elif "/" not in processing_url and "." not in processing_url and len(processing_url) > 0:
