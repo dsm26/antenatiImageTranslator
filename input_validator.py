@@ -39,7 +39,7 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name):
                 except Exception as e:
                     st.error(f"Could not parse the nominative page: {e}")
 
-        # --- STRIP QUERY PARAMETERS ---
+        # --- STRIP QUERY PARAMETERS (Repeated after transformations to keep inputs clean) ---
         if "?" in processing_url and "detail-nominative" not in processing_url:
             processing_url = processing_url.split("?")[0]
 
@@ -50,6 +50,10 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name):
                 if redirected:
                     processing_url = redirected
             
+            # Re-strip in case the redirected URL contains new query parameters
+            if "?" in processing_url:
+                processing_url = processing_url.split("?")[0]
+
             # Notify user of URL switching
             if processing_url != original_input:
                 st.info(f"**Note:** Using link: `{processing_url}`. Links with an_ud or detail-nominative in them are not directly downloadable.")
