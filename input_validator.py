@@ -1,6 +1,5 @@
 import streamlit as st
 import requests
-import re
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 from api_helpers import track_ga_event, log_to_gsheets
@@ -92,26 +91,18 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name, heade
                 ark_path = f"{ark_unit}/{image_id}"
                 track_ga_event("record_path_logged", {"ark_path": ark_path})
 
-            # --- an_ua Auto-Repair Check ---
-            # If the image_id is actually the unit ID (e.g., an_ua...), we need to find the real ID
-            if "an_ua" in image_id:
-                status_placeholder.info("📂 Archive unit detected. Attempting to auto-resolve first page ID...")
-                try:
-                    response = requests.get(processing_url, headers=headers, timeout=10)
-                    if response.status_code == 200:
-                        # Extract the windowsId variable from the JavaScript block
-                        match = re.search(r"let windowsId\s*=\s*'([^']+)'", response.text)
-                        if match:
-                            resolved_id = match.group(1)
-                            image_id = resolved_id
-                            # Re-construct the processing_url to include the ID
-                            processing_url = f"{processing_url.rstrip('/')}/{image_id}"
-                            status_placeholder.info(f"✅ Auto-resolved to page ID: `{image_id}`")
-                        else:
-                            status_placeholder.warning("⚠️ Found the book but couldn't auto-extract the page ID. Please copy the 'bookmark link' from the viewer.")
-                            return "", "", original_input, processing_url
-                except Exception as e:
-                    status_placeholder.error(f"Error auto-resolving ID: {e}")
+            # --- BARE ARCHIVE UNIT CHECK ---
+            # If image_id is still just the unit (starts with an_ua), we can't process it.
+            if image_id.startswith("an_ua"):
+                status_placeholder.warning("""
+                ⚠️ **Incomplete URL.** You linked to an archive book, not a specific page. 
+                
+                **To fix this:**
+                1. Click the **'Next Page'** button in the viewer.
+                2. Click the **'Previous Page'** button to return to your record.
+                3. Click the **'Copia link del bookmark'** icon (the chain link) and use that URL.
+                """)
+                return "", "", original_input, processing_url
 
         elif any(domain in processing_url for domain in ["beniculturali.it", "dam-antenati"]):
             # Handle IIIF and Manifest patterns
