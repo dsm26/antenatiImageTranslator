@@ -106,7 +106,7 @@ def get_antenati_metadata(input_str):
     # Strategy 1: IIIF Manifest
     try:
         manifest_url = f"https://antenati.cultura.gov.it/iiif/2/{image_id}/manifest"
-        resp = requests.get(manifest_url, headers=SIMPLE_HEADERS, timeout=5)
+        resp = requests.get(manifest_url, headers=FULL_HEADERS, timeout=5)
         if resp.status_code == 200:
             label = resp.json().get("label", "")
             if label: return f"{label}"
