@@ -36,6 +36,14 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name):
                             found_path = ark_link['href']
                             processing_url = f"https://antenati.cultura.gov.it{found_path}"
                             st.info(f"📍 Found record: **{ark_link.get_text(strip=True)}**")
+
+
+                        else:
+                            st.warning("⚠️ Scraper reached the page but couldn't find the 'Atto di nascita' link.")
+                    else:
+                        st.error(f"🚫 Antenati server returned an error: {response.status_code}")
+
+
                 except Exception as e:
                     st.error(f"Could not parse the nominative page: {e}")
 
