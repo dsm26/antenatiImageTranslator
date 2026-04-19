@@ -110,7 +110,7 @@ def get_antenati_metadata(input_str):
         if resp.status_code == 200:
             label = resp.json().get("label", "")
             if label: return f"{label}"
-        else
+        else:
             st.toast(f"Failed to get IIIF manifest to aid AI translation: {resp.status_code}", icon="📄")
     except:
         pass
