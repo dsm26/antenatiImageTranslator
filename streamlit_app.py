@@ -110,8 +110,6 @@ def get_antenati_metadata(input_str):
         if resp.status_code == 200:
             label = resp.json().get("label", "")
             if label: return f"{label}"
-        else:
-            st.toast(f"Failed to get IIIF manifest to aid AI translation: {resp.status_code}", icon="📄")
     except:
         pass
 
@@ -125,8 +123,6 @@ def get_antenati_metadata(input_str):
                     clean_title = title_match.group(1).replace(" - Antenati", "").strip()
                     if clean_title and "Antenati" not in clean_title:
                         return f"{clean_title}"
-            else:
-                st.toast(f"Failed to parse page title to aid AI translation: {resp.status_code}", icon="🚫")
         except:
             pass
 
