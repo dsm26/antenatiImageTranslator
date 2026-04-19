@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import re
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 from api_helpers import track_ga_event, log_to_gsheets
@@ -24,32 +25,32 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name, heade
 
         # --- detail-nominative INTERCEPTOR (Must happen before stripping query parameters) ---
         if "detail-nominative" in processing_url:
-            with status_placeholder.info("🔍 Person index detected (detail-nominative). Extracting record link from page..."):
-                try:
-                    response = requests.get(processing_url, headers=headers, timeout=10)
-                    if response.status_code == 200:
-                        soup = BeautifulSoup(response.text, 'html.parser')
-                        # Look for links containing the ARK prefix
-                        ark_link = soup.find('a', href=lambda x: x and '/ark:/12657/an_ud' in x)
-                        if ark_link:
-                            # Reconstruct full URL (Antenati links are often relative)
-                            found_name = ark_link.get_text(strip=True)
-                            found_path = ark_link['href']
-                            processing_url = f"https://antenati.cultura.gov.it{found_path}"
-                            status_placeholder.info(f"""
-                            📍 **Record Found:** {found_name}  
-                            🔗 **Resolved to:** `{processing_url}`
-                            """)
+            status_placeholder.info("🔍 Person index detected (detail-nominative). Extracting record link from page...")
+            try:
+                response = requests.get(processing_url, headers=headers, timeout=10)
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    # Look for links containing the ARK prefix
+                    ark_link = soup.find('a', href=lambda x: x and '/ark:/12657/an_ud' in x)
+                    if ark_link:
+                        # Reconstruct full URL (Antenati links are often relative)
+                        found_name = ark_link.get_text(strip=True)
+                        found_path = ark_link['href']
+                        processing_url = f"https://antenati.cultura.gov.it{found_path}"
+                        status_placeholder.info(f"""
+                        📍 **Record Found:** {found_name}  
+                        🔗 **Resolved to:** `{processing_url}`
+                        """)
 
 
-                        else:
-                            status_placeholder.warning("⚠️ Scraper reached the page but couldn't find the 'Atto di nascita' link.")
                     else:
-                        status_placeholder.error(f"🚫 Antenati server returned an error: {response.status_code}")
+                        status_placeholder.warning("⚠️ Scraper reached the page but couldn't find the 'Atto di nascita' link.")
+                else:
+                    status_placeholder.error(f"🚫 Antenati server returned an error: {response.status_code}")
 
 
-                except Exception as e:
-                    status_placeholder.error(f"Could not parse the nominative page: {e}")
+            except Exception as e:
+                status_placeholder.error(f"Could not parse the nominative page: {e}")
 
         # --- STRIP QUERY PARAMETERS (Repeated after transformations to keep inputs clean) ---
         if "?" in processing_url and "detail-nominative" not in processing_url:
@@ -57,10 +58,10 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name, heade
 
         # --- an_ud INTERCEPTOR ---
         if "/an_ud" in processing_url:
-            with status_placeholder.info(f"🔍 Document unit detected ({processing_url}). Finding specific record link..."):
-                redirected = get_canvas_id_url(processing_url)
-                if redirected:
-                    processing_url = redirected
+            status_placeholder.info(f"🔍 Document unit detected ({processing_url}). Finding specific record link...")
+            redirected = get_canvas_id_url(processing_url)
+            if redirected:
+                processing_url = redirected
             
             # Re-strip in case the redirected URL contains new query parameters
             if "?" in processing_url:
@@ -90,6 +91,27 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name, heade
                 # TRACK FULL RECONSTRUCTED PATH
                 ark_path = f"{ark_unit}/{image_id}"
                 track_ga_event("record_path_logged", {"ark_path": ark_path})
+
+            # --- an_ua Auto-Repair Check ---
+            # If the image_id is actually the unit ID (e.g., an_ua...), we need to find the real ID
+            if "an_ua" in image_id:
+                status_placeholder.info("📂 Archive unit detected. Attempting to auto-resolve first page ID...")
+                try:
+                    response = requests.get(processing_url, headers=headers, timeout=10)
+                    if response.status_code == 200:
+                        # Extract the windowsId variable from the JavaScript block
+                        match = re.search(r"let windowsId\s*=\s*'([^']+)'", response.text)
+                        if match:
+                            resolved_id = match.group(1)
+                            image_id = resolved_id
+                            # Re-construct the processing_url to include the ID
+                            processing_url = f"{processing_url.rstrip('/')}/{image_id}"
+                            status_placeholder.info(f"✅ Auto-resolved to page ID: `{image_id}`")
+                        else:
+                            status_placeholder.warning("⚠️ Found the book but couldn't auto-extract the page ID. Please copy the 'bookmark link' from the viewer.")
+                            return "", "", original_input, processing_url
+                except Exception as e:
+                    status_placeholder.error(f"Error auto-resolving ID: {e}")
 
         elif any(domain in processing_url for domain in ["beniculturali.it", "dam-antenati"]):
             # Handle IIIF and Manifest patterns
