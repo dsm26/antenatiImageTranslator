@@ -95,7 +95,7 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name, heade
             # If image_id is still just the unit (starts with an_ua), we can't process it.
             if image_id.startswith("an_ua"):
                 status_placeholder.warning("""
-                ⚠️ **Incomplete URL.** You linked to an archive book, not a specific page. 
+                ⚠️ **Incomplete URL.** The linked entered is to an entire archive book, not a specific page. 
                 
                 **To fix this:**
                 1. Click the **'Next Page'** button in the viewer.
