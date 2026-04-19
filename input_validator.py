@@ -33,9 +33,13 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name, heade
                         ark_link = soup.find('a', href=lambda x: x and '/ark:/12657/an_ud' in x)
                         if ark_link:
                             # Reconstruct full URL (Antenati links are often relative)
+                            found_name = ark_link.get_text(strip=True)
                             found_path = ark_link['href']
                             processing_url = f"https://antenati.cultura.gov.it{found_path}"
-                            st.info(f"📍 Found record: **{ark_link.get_text(strip=True)}**")
+                            st.info(f"""
+                            📍 **Record Found:** {found_name}  
+                            🔗 **Resolved to:** `{processing_url}`
+                            """)
 
 
                         else:
