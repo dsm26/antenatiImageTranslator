@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 from api_helpers import track_ga_event, log_to_gsheets
 
-def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name):
+def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name, headers):
     image_id = ""
     ark_unit = ""
     original_input = user_input.strip()
@@ -26,7 +26,7 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name):
         if "detail-nominative" in processing_url:
             with st.spinner("🔍 Person index detected (detail-nominative). Extracting record link from page..."):
                 try:
-                    response = requests.get(processing_url, timeout=10)
+                    response = requests.get(processing_url, headers=headers, timeout=10)
                     if response.status_code == 200:
                         soup = BeautifulSoup(response.text, 'html.parser')
                         # Look for links containing the ARK prefix

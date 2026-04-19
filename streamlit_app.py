@@ -22,9 +22,24 @@ from sidebar import show_sidebar
 APP_NAME = "Antenati Downloader & AI Translator"
 APP_ICON = "🏛️"
 
-HEADERS = {
+SIMPLE_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     "Referer": "https://antenati.cultura.gov.it/"
+}
+
+FULL_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9,it;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Referer": "https://antenati.cultura.gov.it/",
+    "DNT": "1",
+    "Connection": "keep-alive",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "same-origin",
+    "Sec-Fetch-User": "?1",
+    "Upgrade-Insecure-Requests": "1"
 }
 
 # Cache control
@@ -57,21 +72,7 @@ AVAILABLE_MODELS = load_models()
 def get_canvas_id_url(url):
     """Parses the Antenati HTML to extract the hidden canvasId URL."""
     try:
-        HEADERS = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9,it;q=0.8",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Referer": "https://antenati.cultura.gov.it/",
-            "DNT": "1",
-            "Connection": "keep-alive",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "same-origin",
-            "Sec-Fetch-User": "?1",
-            "Upgrade-Insecure-Requests": "1"
-        }
-        resp = requests.get(url, headers=HEADERS, timeout=5)
+        resp = requests.get(url, headers=FULL_HEADERS, timeout=5)
 
         if resp.status_code == 200:
             match = re.search(r"canvasId:\s*'([^']+)'", resp.text)
@@ -105,7 +106,7 @@ def get_antenati_metadata(input_str):
     # Strategy 1: IIIF Manifest
     try:
         manifest_url = f"https://antenati.cultura.gov.it/iiif/2/{image_id}/manifest"
-        resp = requests.get(manifest_url, headers=HEADERS, timeout=5)
+        resp = requests.get(manifest_url, headers=SIMPLE_HEADERS, timeout=5)
         if resp.status_code == 200:
             label = resp.json().get("label", "")
             if label: return f"{label}"
@@ -115,7 +116,7 @@ def get_antenati_metadata(input_str):
     # Strategy 2: Page Scraping (Requires Full URL)
     if "antenati.cultura.gov.it" in input_str:
         try:
-            resp = requests.get(input_str, headers=HEADERS, timeout=5)
+            resp = requests.get(input_str, headers=SIMPLE_HEADERS, timeout=5)
             if resp.status_code == 200:
                 title_match = re.search(r'<title>(.*?)</title>', resp.text)
                 if title_match:
@@ -137,7 +138,7 @@ def get_antenati_metadata(input_str):
 def get_stitched_image(cache_key, image_id, source_input, ark_unit=""):
     base_url = f"https://iiif-antenati.cultura.gov.it/iiif/2/{image_id}"
     try:
-        info_resp = requests.get(f"{base_url}/info.json", headers=HEADERS)
+        info_resp = requests.get(f"{base_url}/info.json", headers=SIMPLE_HEADERS)
         info_resp.raise_for_status()
         info = info_resp.json()
     except Exception as e:
@@ -170,7 +171,7 @@ def get_stitched_image(cache_key, image_id, source_input, ark_unit=""):
             tile_url = f"{base_url}/{x},{y},{tile_w},{tile_h}/full/0/default.jpg"
             progress_placeholder.progress(tile_count / total_tiles, text=f"📥 Downloading tile {tile_count} of {total_tiles}...")
             try:
-                res = requests.get(tile_url, headers=HEADERS)
+                res = requests.get(tile_url, headers=SIMPLE_HEADERS)
                 res.raise_for_status()
                 tile_data = Image.open(BytesIO(res.content))
                 final_img.paste(tile_data, (x, y))
@@ -280,7 +281,7 @@ if final_api_key:
 
     # --- URL VALIDATION & ID EXTRACTION ---
     input_id, ark_part1, original_input, processing_url = validate_antenati_url(
-        raw_input, id_param, get_canvas_id_url, APP_NAME
+        raw_input, id_param, get_canvas_id_url, APP_NAME, FULL_HEADERS
     )
 
     # Update raw_input for the rest of the logic to use the resolved URL
@@ -497,4 +498,4 @@ else:
     st.error("🔑 API Key missing. Provide a key in the sidebar or check Secrets.")
 
 # --- FINAL UI ELEMENTS ---
-show_feedback_form(APP_NAME, HEADERS)
+show_feedback_form(APP_NAME, SIMPLE_HEADERS)
