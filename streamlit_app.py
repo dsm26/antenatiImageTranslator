@@ -78,8 +78,8 @@ def get_canvas_id_url(url):
             match = re.search(r"canvasId:\s*'([^']+)'", resp.text)
             if match:
                 return match.group(1)
-        elif resp.status_code == 403:
-             st.write(f"DEBUG: 403 Forbidden received for {url}")
+        #elif resp.status_code == 403:
+        #     st.write(f"DEBUG: 403 Forbidden received for {url}")
 
     except:
         pass
@@ -279,9 +279,12 @@ if final_api_key:
     
     raw_input = st.text_input("Paste Antenati URL (preferred) or Image ID:", value=initial_value)
 
+    # Create placeholder place for status messages
+    val_status = st.empty()
+
     # --- URL VALIDATION & ID EXTRACTION ---
     input_id, ark_part1, original_input, processing_url = validate_antenati_url(
-        raw_input, id_param, get_canvas_id_url, APP_NAME, FULL_HEADERS
+        raw_input, id_param, get_canvas_id_url, APP_NAME, FULL_HEADERS, val_status
     )
 
     # Update raw_input for the rest of the logic to use the resolved URL
