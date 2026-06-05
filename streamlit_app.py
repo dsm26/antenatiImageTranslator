@@ -144,7 +144,18 @@ def get_stitched_image(cache_key, image_id, source_input, ark_unit=""):
     except Exception as e:
         track_ga_event("antenati_error", {"error_type": "info_json", "image_id": image_id})
         log_to_gsheets("error_logs", [APP_NAME, ark_unit, source_input, "Stitching Error (Info JSON)", str(e), traceback.format_exc()])
-        raise e
+        raise RuntimeError(f"""**Could not retrieve the image from the archive.**
+
+This is often a temporary issue with the Italian server.
+
+**Try these steps:**
+1. **Wait a moment and try again** (the server may be busy).
+2. **Refresh the page** (click the browser refresh button).
+3. **Check your link**—ensure you used the "Copia link del bookmark" button from the portal.
+
+**Technical Error:**
+{e}"""
+        ) from e
     
     w, h = info["width"], info["height"]
     
@@ -178,7 +189,18 @@ def get_stitched_image(cache_key, image_id, source_input, ark_unit=""):
             except Exception as e:
                 track_ga_event("antenati_error", {"error_type": "tile_download", "image_id": image_id})
                 log_to_gsheets("error_logs", [APP_NAME, ark_unit, source_input, "Stitching Error (Tile)", str(e), traceback.format_exc()])
-                raise e
+                raise RuntimeError(f"""**Unable to stitch image pieces together.**
+
+This is often a temporary issue with the Italian server.
+
+**Try these steps:**
+1. **Wait a moment and try again** (the server may be busy).
+2. **Refresh the page** (click the browser refresh button).
+3. **Check your link**—ensure you used the "Copia link del bookmark" button from the portal.
+
+**Technical Error:**
+{e}"""
+                ) from e
     
     progress_placeholder.empty()
 
@@ -494,7 +516,7 @@ if final_api_key:
                         st.exception(e)
 
         except Exception as e:
-            st.error(f"Error fetching record: {e}")
+            st.error(f"Error fetching record. {e}")
             # --- TRIGGER 2: Tab 2 (error_logs) for Fetch/Metadata Errors ---
             log_to_gsheets("error_logs", [APP_NAME, ark_part1, raw_input, "Fetch/Metadata Error", str(e), traceback.format_exc()])
 else:
