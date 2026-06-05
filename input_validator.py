@@ -18,7 +18,7 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name, heade
             ⚠️ **Direct Image Link Detected.**
             
             It looks like you've pasted a direct link to an image file. 
-            This tool requires the **Antenati Portal URL** to fetch the metadata and AI analysis.
+            This tool requires the **Antenati Portal URL**.
             
             **To fix this:**
             Please go back to the [Antenati portal](https://antenati.cultura.gov.it/), navigate to the page you want, and click the **'Copia link del bookmark'** button to get the correct page link.
