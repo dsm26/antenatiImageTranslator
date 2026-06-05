@@ -146,7 +146,7 @@ def get_stitched_image(cache_key, image_id, source_input, ark_unit=""):
         log_to_gsheets("error_logs", [APP_NAME, ark_unit, source_input, "Stitching Error (Info JSON)", str(e), traceback.format_exc()])
         raise RuntimeError(f"""**Could not retrieve the image from the archive.**
 
-This is often a temporary issue with the Italian server, but you could also be an invalid Antenati URL.
+This is often a temporary issue with the Italian server, but could also be an invalid Antenati URL.
 
 **Try these steps:**
 1. Confirm your link — ensure you used the "Copia link del bookmark" button from the portal.
