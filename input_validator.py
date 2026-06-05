@@ -13,17 +13,17 @@ def validate_antenati_url(user_input, url_id, get_canvas_id_url, app_name, heade
     if processing_url:
 
         # --- DIRECT IMAGE LINK INTERCEPTOR ---
-    if processing_url.lower().endswith(('.jpg', '.jpeg', '.png', '.tiff')):
-        status_placeholder.warning("""
-        ⚠️ **Direct Image Link Detected.**
-        
-        It looks like you've pasted a direct link to an image file. 
-        This tool requires the **Antenati Portal URL** to fetch the metadata and AI analysis.
-        
-        **To fix this:**
-        Please go back to the [Antenati portal](https://antenati.cultura.gov.it/), navigate to the page you want, and click the **'Copia link del bookmark'** button to get the correct page link.
-        """)
-        return "", "", original_input, processing_url
+        if processing_url.lower().endswith(('.jpg', '.jpeg', '.png', '.tiff')):
+            status_placeholder.warning("""
+            ⚠️ **Direct Image Link Detected.**
+            
+            It looks like you've pasted a direct link to an image file. 
+            This tool requires the **Antenati Portal URL** to fetch the metadata and AI analysis.
+            
+            **To fix this:**
+            Please go back to the [Antenati portal](https://antenati.cultura.gov.it/), navigate to the page you want, and click the **'Copia link del bookmark'** button to get the correct page link.
+            """)
+            return "", "", original_input, processing_url
 
         # --- FAMILYSEARCH CHECK ---
         if "familysearch.org" in processing_url.lower():
